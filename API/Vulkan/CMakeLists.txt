@@ -1,50 +1,67 @@
 cmake_minimum_required(VERSION 3.27)
-set(PROJECT_NAME FawnVision)
+set(PROJECT_NAME DeerVulkan)
 set(ROOT_NAMESPACE ${PROJECT_NAME})
 project(${PROJECT_NAME})
 
-option(BALBINO_VULKAN "Build with the Renderer with Vulkan" ON)
-option(BALBINO_BUILD_SDL "Build SDL (OFF when just include or depend on it" ON)
-set(SDL_TEST_LIBRARY OFF CACHE STRING "Build the SDL3_test library")
-set(SDL_LOCATION "" CACHE STRING "The location of SDL3")
-set(TARGET_OUTPUT ${PROJECT_NAME} CACHE STRING "Overwrite this with the exe/base project name")
+# VULKAN_LOCATION needs to be overwritten by used Project
+set(VULKAN_LOCATION "" CACHE STRING "The location of Vulkan")
 
 add_library(${PROJECT_NAME}
-        Includes/FawnVision_Core.h
-        Includes/ObjectDefenitions.h
-        Source/Window.cpp
-        Source/Renderer.cpp
-        Includes/FawnVision.h
+        Wrapper/Base.h
+        Wrapper/VkCommandHandler.cpp
+        Wrapper/VkCommandHandler.h
+        Wrapper/VkDevice.cpp
+        Wrapper/VkDevice.h
+        Wrapper/VkFence.cpp
+        Wrapper/VkFence.h
+        Wrapper/VkInstance.cpp
+        Wrapper/VkInstance.h
+        Wrapper/VkQueue.cpp
+        Wrapper/VkQueue.h
+        Wrapper/VkSemaphore.cpp
+        Wrapper/VkSemaphore.h
+        Wrapper/VkSurface.cpp
+        Wrapper/VkSurface.h
+        Wrapper/VkSwapChain.cpp
+        Wrapper/VkSwapChain.h
+        DeerVulkan.h
+        DeerVulkan_Core.h
+        Instance.cpp
+        Instance.h
+        Presenter.cpp
+        Presenter.h
+        RenderPipeline.cpp
+        RenderPipeline.h
+        Texture.cpp
+        Texture.h
+        Mesh.cpp
+        Mesh.h
 )
-target_include_directories(${PROJECT_NAME} PRIVATE
-        Includes
+
+if (VULKAN_LOCATION STREQUAL "")
+    message(FATAL_ERROR "No path to the vulkan sdk is given")
+endif ()
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+        ${VULKAN_LOCATION}/include
+)
+target_link_directories(${PROJECT_NAME} PUBLIC
+        ${VULKAN_LOCATION}/lib
+)
+target_link_libraries(${PROJECT_NAME} PUBLIC
+        vulkan-1
 )
 
 if (SDL_LOCATION STREQUAL "")
     find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
     set(SDL_LIB SDL3::SDL3)
 else ()
-    if (BALBINO_BUILD_SDL)
-        add_subdirectory(${SDL_LOCATION} SDL3)
-    endif ()
     add_dependencies(${PROJECT_NAME} SDL3::SDL3)
     set(SDL_LIB SDL3::SDL3)
 
-    target_include_directories(${PROJECT_NAME} PUBLIC ${SDL_LOCATION}/include)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ${SDL_LIB})
+    target_include_directories(${PROJECT_NAME} PRIVATE ${SDL_LOCATION}/include)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL_LIB})
 endif ()
-
-
-if (BALBINO_VULKAN)
-    add_subdirectory(API/Vulkan)
-    add_dependencies(${PROJECT_NAME} DeerVulkan)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC BALBINO_VULKAN)
-    target_include_directories(${PROJECT_NAME} PUBLIC API/Vulkan)
-    target_link_libraries(${PROJECT_NAME} PUBLIC
-            DeerVulkan
-    )
-endif ()
-
 
 target_compile_features(${PROJECT_NAME} PRIVATE
         c_static_assert
@@ -86,13 +103,4 @@ target_compile_features(${PROJECT_NAME} PRIVATE
         cxx_uniform_initialization
         cxx_unrestricted_unions
         cxx_user_literals
-)
-install(FILES
-        $<TARGET_FILE:${SDL_LIB}>
-        DESTINATION ${TARGET_OUTPUT}  # Install the DLLs in the binary directory
-)
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:${SDL_LIB}>
-        $<TARGET_FILE_DIR:${TARGET_OUTPUT}>
 )
