@@ -15,7 +15,7 @@ namespace DeerVulkan
         {
             m_surface = surface;
         };
-        [[nodiscard]] VkSurfaceKHR GetHandle() const noexcept
+        [[nodiscard]] VkSurfaceKHR Handle() const noexcept
         {
             return m_surface;
         }

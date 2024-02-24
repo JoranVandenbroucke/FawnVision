@@ -2,27 +2,31 @@
 // Created by joran on 30/12/2023.
 //
 
-#include <SDL3/SDL.h>
+#include "FawnVision_Window.hpp"
 
-#include "FawnVision_Core.h"
-#include "ObjectDefenitions.h"
+#include "Error.hpp"
+#include "ObjectDefinitions.hpp"
+
+#include <SDL3/SDL.h>
 
 namespace FawnVision
 {
-    error_code Initialize()
+    int32_t Initialize()
     {
-        if ( SDL_Init( SDL_INIT_EVERYTHING ) )
+        if ( SDL_Init( SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR | SDL_INIT_AUDIO ) != 0 )
         {
-            return error_code::not_initializable;
+            SetError( error_code::generic, "SDL initialization failed: %s", SDL_GetError() );
+            return -1;
         }
-        return error_code::oke;
+        return 0;
     }
 
-    error_code CreateWindow( const WindowCreateInfo& createInfo, Window& window ) noexcept
+    int32_t CreateWindow( const WindowCreateInfo& createInfo, Window& window ) noexcept
     {
-        if ( window )
+        if ( window != nullptr )
         {
-            return error_code::already_initialized;
+            SetError( error_code::generic, "Window is already created" );
+            return -1;
         }
 
         int screenCount {};
@@ -33,7 +37,7 @@ namespace FawnVision
             for ( const SDL_DisplayID* displayId { displayList }; displayId != nullptr; ++displayId )
             {
                 current = SDL_GetDesktopDisplayMode( *displayId );
-                if ( current )
+                if ( current != nullptr )
                 {
                     break;
                 }
@@ -43,223 +47,159 @@ namespace FawnVision
         {
             if ( createInfo.screen >= screenCount )
             {
-                return error_code::invalid_parameter;
+                SetError( error_code::generic, "Invalid screen requested. Available screens: %d Requested screen: %d", screenCount, createInfo.screen );
+                return -1;
             }
 
             current = SDL_GetDesktopDisplayMode( createInfo.screen );
         }
-        if ( !current )
+        if ( current == nullptr )
         {
-            return error_code::no_display_found;
+            SetError( error_code::generic, "Window is not initialized" );
+            return -1;
         }
         if ( createInfo.width > current->w || createInfo.height > current->h )
         {
-            return error_code::invalid_parameter;
+            SetError( error_code::generic, "Requested window size (%d x %d) is larger than the available screen size (%d x %d)", createInfo.width, createInfo.height, current->w, current->h );
+            return -1;
         }
 
-        SDL_Window* pWindow { SDL_CreateWindow( createInfo.name, createInfo.width, createInfo.height, createInfo.flags ) };
-        if ( !pWindow )
+        SDL_Window* pWindow { SDL_CreateWindow( &createInfo.name[0], createInfo.width, createInfo.height, createInfo.flags ) };
+        if ( pWindow == nullptr )
         {
-            return error_code::window_not_created;
+            SetError( error_code::generic, "SDL window creation failed: %s", SDL_GetError() );
+            return -1;
         }
+
         window = new ( std::nothrow ) Window_T { pWindow, createInfo.flags, createInfo.width, createInfo.height };
-        if ( !window )
+        if ( window == nullptr )
         {
-            return error_code::out_of_memory;
+            SetError( error_code::out_of_memory, "Failed to allocate memory for the window" );
+            return -1;
         }
+
         window->extensions = SDL_Vulkan_GetInstanceExtensions( &window->extensionCount );
-        if ( !window->extensions )
+        if ( window->extensions == nullptr )
         {
-            return error_code::sdl_error;
+            SetError( error_code::generic, "SDL Vulkan extension retrieval failed: %s", SDL_GetError() );
+            return -1;
         }
-        return error_code::oke;
+
+        return 0;
     }
 
-    error_code SetWindowFlags( const Window& window, const uint32_t flags ) noexcept
+    int32_t SetWindowFlags( const Window& window, const uint32_t flags ) noexcept
     {
-        if ( !window )
+        if ( window == nullptr )
         {
-            return error_code::not_initialized;
+            SetError( error_code::generic, "Window is not initialized" );
+            return -1;
         }
 
-        if ( SDL_SetWindowBordered( window->pWindow, flags & SDL_WINDOW_BORDERLESS ? SDL_FALSE : SDL_TRUE ) || SDL_SetWindowResizable( window->pWindow, flags & SDL_WINDOW_RESIZABLE ? SDL_TRUE : SDL_FALSE )
-             || SDL_SetWindowFullscreen( window->pWindow, flags & SDL_WINDOW_FULLSCREEN ? SDL_TRUE : SDL_FALSE ) || SDL_SetWindowFocusable( window->pWindow, flags & SDL_WINDOW_NOT_FOCUSABLE ? SDL_FALSE : SDL_TRUE ) )
+        if ( SDL_SetWindowBordered( window->pWindow, (flags & SDL_WINDOW_BORDERLESS) != 0U ? SDL_FALSE : SDL_TRUE ) != 0
+             || SDL_SetWindowResizable( window->pWindow, (flags & SDL_WINDOW_RESIZABLE) != 0U ? SDL_TRUE : SDL_FALSE ) != 0
+             || SDL_SetWindowFullscreen( window->pWindow, (flags & SDL_WINDOW_FULLSCREEN) != 0U ? SDL_TRUE : SDL_FALSE ) != 0
+             || SDL_SetWindowFocusable( window->pWindow, (flags & SDL_WINDOW_NOT_FOCUSABLE) != 0U ? SDL_FALSE : SDL_TRUE ) != 0 )
         {
-            return error_code::sdl_error;
+            SetError( error_code::generic, "Failed to set window flags: %s", SDL_GetError() );
+            return -1;
         }
-        if ( flags & SDL_WINDOW_MAXIMIZED )
+
+        if ( ( flags & SDL_WINDOW_MAXIMIZED ) != 0U )
         {
-            if ( SDL_MaximizeWindow( window->pWindow ) )
+            if ( SDL_MaximizeWindow( window->pWindow ) != 0 )
             {
-                return error_code::sdl_error;
+                SetError( error_code::generic, "Failed to maximize window: %s", SDL_GetError() );
+                return -1;
             }
         }
-        if ( flags & SDL_WINDOW_MINIMIZED )
+
+        if ( ( flags & SDL_WINDOW_MINIMIZED ) != 0U )
         {
-            if ( SDL_MinimizeWindow( window->pWindow ) )
+            if ( SDL_MinimizeWindow( window->pWindow ) != 0 )
             {
-                return error_code::sdl_error;
+                SetError( error_code::generic, "Failed to minimize window: %s", SDL_GetError() );
+                return -1;
             }
         }
+
         window->flags = flags;
-        return error_code::oke;
+        return 0;
     }
 
-    error_code ToggleWindowFlags( const Window& window, const uint32_t flags ) noexcept
+    int32_t ToggleWindowFlags( const Window& window, const uint32_t flags ) noexcept
     {
         return SetWindowFlags( window, window->flags ^ flags );
     }
 
-    error_code SetWindowSize( const Window& window, const int w, const int h ) noexcept
+    int32_t SetWindowSize( const Window& window, const int width, const int height ) noexcept
     {
-        if ( !window )
+        if ( window == nullptr )
         {
-            return error_code::not_initialized;
+            SetError( error_code::generic, "Window is not initialized" );
+            return -1;
         }
-        window->width  = w;
-        window->height = h;
-        SDL_SetWindowSize( window->pWindow, w, h );
+
+        window->width  = width;
+        window->height = height;
+        SDL_SetWindowSize( window->pWindow, width, height );
         SDL_SetWindowPosition( window->pWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED );
-        return error_code::oke;
+        return 0;
     }
 
-    error_code GetWindowSize( const Window& window, int& w, int& h ) noexcept
+    int32_t GetWindowSize( const Window& window, int& w, int& h ) noexcept
     {
-        if ( !window )
+        if ( window == nullptr )
         {
-            return error_code::not_initialized;
+            SetError( error_code::generic, "Window is not initialized" );
+            return -1;
         }
+
         w = window->width;
         h = window->height;
-        return error_code::oke;
+        return 0;
     }
 
-    error_code SetWindowPosition( const Window& window, const int x, const int y ) noexcept
+    int32_t SetWindowPosition( const Window& window, const int x, const int y ) noexcept
     {
-        if ( !window )
+        if ( window == nullptr )
         {
-            return error_code::not_initialized;
+            SetError( error_code::generic, "Window is not initialized" );
+            return -1;
         }
+
         SDL_SetWindowPosition( window->pWindow, x, y );
-        return error_code::oke;
+        return 0;
     }
 
-    error_code GetWindowPosition( const Window& window, int& x, int& y ) noexcept
+    int32_t GetWindowPosition( const Window& window, int& xPosition, int& yPosition ) noexcept
     {
-        if ( !window )
+        if ( window == nullptr )
         {
-            return error_code::not_initialized;
+            SetError( error_code::generic, "Window is not initialized" );
+            return -1;
         }
-        SDL_GetWindowPosition( window->pWindow, &x, &y );
-        return error_code::oke;
+
+        SDL_GetWindowPosition( window->pWindow, &xPosition, &yPosition );
+        return 0;
     }
 
-    error_code ReleaseWindow( Window& window ) noexcept
+    int32_t ReleaseWindow( Window& window ) noexcept
     {
-        if ( !window )
+        if ( window == nullptr )
         {
-            return error_code::not_initialized;
+            SetError( error_code::generic, "Window is not initialized" );
+            return -1;
         }
+
         SDL_DestroyWindow( window->pWindow );
         delete window;
-        window = BALBINO_NULL;
-        return error_code::oke;
+        window = nullptr;
+        return 0;
     }
 
     const char* GetWindowError()
     {
         return SDL_GetError();
-    }
-
-    void ProcessCommonEvents( bool& loop, const SDL_Event& event )
-    {
-        switch ( event.type )
-        {
-            case SDL_EVENT_QUIT:
-            case SDL_EVENT_TERMINATING:
-            {
-                loop = false;
-                break;
-            }
-            case SDL_EVENT_LOW_MEMORY:
-            case SDL_EVENT_WILL_ENTER_BACKGROUND:
-            case SDL_EVENT_DID_ENTER_BACKGROUND:
-            case SDL_EVENT_WILL_ENTER_FOREGROUND:
-            case SDL_EVENT_DID_ENTER_FOREGROUND:
-            case SDL_EVENT_LOCALE_CHANGED:
-            case SDL_EVENT_SYSTEM_THEME_CHANGED:// todo : check if ui theme needs to be changed (callbacks)
-            default: break;
-        }
-    }
-
-    void ProcessWindowEvents( const Window& window, bool& loop, const SDL_Event& event )
-    {
-        switch ( event.type )
-        {
-            case SDL_EVENT_WINDOW_HIDDEN:
-            case SDL_EVENT_WINDOW_MINIMIZED:
-            {
-                SDL_Event minEvent;
-                bool isMin { true };
-                while ( isMin && loop )
-                {
-                    if ( SDL_WaitEvent( &minEvent ) )
-                    {
-                        switch ( minEvent.type )
-                        {
-                            case SDL_EVENT_WINDOW_EXPOSED:
-                            case SDL_EVENT_WINDOW_HIDDEN:
-                            case SDL_EVENT_WINDOW_MAXIMIZED:
-                            case SDL_EVENT_WINDOW_MINIMIZED:
-                            case SDL_EVENT_WINDOW_RESTORED:
-                            case SDL_EVENT_WINDOW_SHOWN:
-                            {
-                                isMin = false;
-                                break;
-                            }
-                            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-                            {
-                                loop = false;
-                                break;
-                            }
-                            default: break;
-                        }
-                    }
-                }
-                break;
-            }
-            case SDL_EVENT_WINDOW_EXPOSED:
-            case SDL_EVENT_WINDOW_MAXIMIZED:
-            case SDL_EVENT_WINDOW_RESTORED:
-            case SDL_EVENT_WINDOW_RESIZED:
-            case SDL_EVENT_WINDOW_SHOWN:
-                SDL_GetWindowSize( window->pWindow, &window->width, &window->height );
-                window->flags = SDL_GetWindowFlags( window->pWindow );
-                // todo : call all resize callbacks;
-                break;
-            case SDL_EVENT_WINDOW_MOVED:
-            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-            default: break;
-        }
-    }
-
-    void ProcessEvents( const Window& window, bool& loop ) noexcept
-    {
-        SDL_Event event;
-        while ( SDL_PollEvent( &event ) )
-        {
-            if ( event.type > SDL_EVENT_FIRST && event.type < SDL_EVENT_DISPLAY_FIRST )
-            {
-                ProcessCommonEvents( loop, event );
-            }
-            else if ( event.type > SDL_EVENT_WINDOW_FIRST && event.type < SDL_EVENT_WINDOW_LAST )
-            {
-                ProcessWindowEvents( window, loop, event );
-            }
-            else if ( event.type > SDL_EVENT_WINDOW_LAST && event.type <= SDL_EVENT_FINGER_MOTION )
-            {
-                return;// todo : process input callbacks
-            }
-        }
     }
 }// namespace FawnVision

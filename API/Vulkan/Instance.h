@@ -19,11 +19,11 @@ namespace DeerVulkan
     {
     public:
         Instance() = default;
-        int Initialize( SDL_Window* pWindow, const char* appTitle, uint32_t appVersion, const char* const* extensions, uint32_t extensionsCount ) noexcept;
-        int Cleanup() noexcept;
+        int32_t Initialize( SDL_Window* pWindow, const char* appTitle, uint32_t appVersion, const char* const* extensions, uint32_t extensionsCount ) noexcept;
+        int32_t Cleanup() noexcept;
 
-        int CreatePresentor( Presenter& presentor, int32_t w, int32_t h ) const noexcept;
-        int RecreatePresentor( Presenter& presentor, int32_t w, int32_t h ) const noexcept;
+        int32_t CreatePresentor( Presenter& presentor, int32_t w, int32_t h ) const noexcept;
+        int32_t RecreatePresentor( Presenter& presentor, int32_t w, int32_t h ) const noexcept;
 
     private:
         CVkInstance* m_instance;

@@ -9,12 +9,31 @@ set(SDL_TEST_LIBRARY OFF CACHE STRING "Build the SDL3_test library")
 set(SDL_LOCATION "" CACHE STRING "The location of SDL3")
 set(TARGET_OUTPUT ${PROJECT_NAME} CACHE STRING "Overwrite this with the exe/base project name")
 
+set(API_FILES)
+if (BALBINO_VULKAN)
+    include(API/Vulkan.cmake)
+    GetVulkanWrapperFiles()
+    get_property(VULKAN_API_WRAPPER_FILES GLOBAL PROPERTY VULKAN_API_WRAPPER_FILES)
+    set(API_FILES ${VULKAN_API_WRAPPER_FILES})
+endif ()
 add_library(${PROJECT_NAME}
-        Includes/FawnVision_Core.h
-        Includes/ObjectDefenitions.h
+        Includes/FawnVision.hpp
+        Includes/FawnVision_Core.hpp
+        Includes/FawnVision_Error.hpp
+        Includes/FawnVision_Renderer.hpp
+        Includes/FawnVision_Shader.hpp
+        Includes/FawnVision_Window.hpp
+        Includes/Versions.hpp
+
+        Source/Error.cpp
+        Source/Error.hpp
+        Source/ObjectDefinitions.hpp
         Source/Window.cpp
+        Source/WindowEvents.cpp
+        Source/WindowEvents.hpp
         Source/Renderer.cpp
-        Includes/FawnVision.h
+        Source/Shader.cpp
+        ${API_FILES}
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
         Includes
@@ -36,19 +55,22 @@ endif ()
 
 
 if (BALBINO_VULKAN)
-    add_subdirectory(API/Vulkan)
-    add_dependencies(${PROJECT_NAME} DeerVulkan)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC BALBINO_VULKAN)
-    target_include_directories(${PROJECT_NAME} PUBLIC API/Vulkan)
-    target_link_libraries(${PROJECT_NAME} PUBLIC
-            DeerVulkan
-    )
+    ConfigVulkanWrapper(${PROJECT_NAME})
 endif ()
 
+target_compile_options(${PROJECT_NAME} PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:
+        /W4 /WX /MP $<$<CONFIG:Debug>:${DEFAULT_CXX_DEBUG_INFORMATION_FORMAT} ${DEFAULT_CXX_EXCEPTION_HANDLING}>
+        >
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+)
 
 target_compile_features(${PROJECT_NAME} PRIVATE
+        c_function_prototypes
+        c_restrict
         c_static_assert
         c_std_17
+        c_variadic_macros
         cxx_aggregate_default_initializers
         cxx_alignof
         cxx_attributes
@@ -87,6 +109,7 @@ target_compile_features(${PROJECT_NAME} PRIVATE
         cxx_unrestricted_unions
         cxx_user_literals
 )
+
 install(FILES
         $<TARGET_FILE:${SDL_LIB}>
         DESTINATION ${TARGET_OUTPUT}  # Install the DLLs in the binary directory

@@ -1,5 +1,5 @@
 //
-// Created by Joran on 09/01/2024.
+// Created by Joran on 16/02/2024.
 //
 
 #pragma once
@@ -11,46 +11,53 @@ namespace DeerVulkan
     class CVkFence final : public CDeviceObject
     {
     public:
-        explicit CVkFence( CVkDevice* pDevice )
+        explicit CVkFence( const CVkDevice* pDevice )
             : CDeviceObject( pDevice )
         {}
 
         ~CVkFence() override
         {
-            std::ranges::for_each( m_fences,
-                                   [ &device = GetDevice()->GetVkDevice() ]( VkFence_T* semaphore )
-                                   {
-                                       vkDestroyFence( device, semaphore, VK_NULL_HANDLE );
-                                   } );
-            m_fences.clear();
+            vkDestroyFence( Device()->VkDevice(), m_fence, VK_NULL_HANDLE );
         }
 
-        int32_t Initialize( int createCount ) noexcept;
-
-        int Wait( const uint32_t idx = 0 ) const noexcept
+        int32_t Initialize() noexcept
         {
-            if ( !CheckVkResult( vkWaitForFences( GetDevice()->GetVkDevice(), 1, &m_fences[ idx ], VK_TRUE, UINT64_MAX ) ) )
+            constexpr VkFenceCreateInfo createInfo {
+                    .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                    .pNext = VK_NULL_HANDLE,
+                    .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+            };
+            if ( !CheckVkResult( vkCreateFence( Device()->VkDevice(), &createInfo, VK_NULL_HANDLE, &m_fence ) ) )
             {
                 return -1;
             }
             return 0;
         }
 
-        int Reset( const uint32_t idx = 0 ) const noexcept
+        int Wait() const noexcept
         {
-            if ( !CheckVkResult( vkResetFences( GetDevice()->GetVkDevice(), 1, &m_fences[ idx ] ) ) )
+            if ( !CheckVkResult( vkWaitForFences( Device()->VkDevice(), 1, &m_fence, VK_TRUE, UINT64_MAX ) ) )
             {
                 return -1;
             }
             return 0;
         }
 
-        VkFence GetHandle( const uint32_t idx = 0 ) const noexcept
+        int Reset() const noexcept
         {
-            return m_fences[ idx ];
+            if ( !CheckVkResult( vkResetFences( Device()->VkDevice(), 1, &m_fence ) ) )
+            {
+                return -1;
+            }
+            return 0;
+        }
+
+        VkFence Handle() const noexcept
+        {
+            return m_fence;
         }
 
     private:
-        std::vector<VkFence> m_fences;
+        VkFence m_fence { VK_NULL_HANDLE };
     };
 }// namespace DeerVulkan

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <source_location>
 #include <vulkan/vulkan.hpp>
+#include <Versions.hpp>
 
 #ifndef BALBINO_NULL
     #define BALBINO_NULL nullptr

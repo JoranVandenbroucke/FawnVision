@@ -4,5 +4,6 @@
 
 #include "Texture.h"
 
-namespace DeerVulkan {
-} // DeerVulkan
+namespace DeerVulkan
+{
+}

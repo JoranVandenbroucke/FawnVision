@@ -21,20 +21,20 @@ namespace DeerVulkan
             return -1;
         }
         VkSurfaceKHR surface;
-        if ( SDL_Vulkan_CreateSurface( pWindow, m_instance->GetHandle(), VK_NULL_HANDLE, &surface ) != SDL_TRUE )
+        if ( SDL_Vulkan_CreateSurface( pWindow, m_instance->Handle(), VK_NULL_HANDLE, &surface ) != SDL_TRUE )
         {
-            return -1;
+            return -2;
         }
         m_surface = new CVkSurface {};
         m_surface->Initialize( surface );
         m_familyIndex = m_instance->FindBestPhysicalDeviceIndex( m_surface );
         if ( m_familyIndex < 0 )
         {
-            return -1;
+            return -3;
         }
         if ( m_instance->CreateDevice( m_device, m_familyIndex ) )
         {
-            return -1;
+            return -4;
         }
         return 0;
     }
