@@ -1,5 +1,6 @@
 //
-// Created by joran on 03/01/2024.
+// Copyright (c) 2024.
+// Author: Joran
 //
 
 #pragma once

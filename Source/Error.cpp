@@ -1,20 +1,21 @@
 //
-// Created by Joran on 20/02/2024.
+// Copyright (c) 2024.
+// Author: Joran
 //
 
-#include "FawnVision_Error.hpp"
 #include "Error.hpp"
+#include "FawnVision_Error.hpp"
 
 namespace FawnVision
 {
-    const char* GetError()
+auto GetError() -> const char*
+{
+    switch (g_error.error)
     {
-        switch ( g_error.error )
-        {
-            case error_code::generic: return g_error.str;
-            case error_code::out_of_memory: return "Out Of Memory";
-            default: break;
-        }
-        return "";
+    case error_code::generic: return g_error.str.data();
+    case error_code::out_of_memory: return "Out Of Memory";
+    default: break;
     }
-}// namespace FawnVision
+    return "";
+}
+} // namespace FawnVision

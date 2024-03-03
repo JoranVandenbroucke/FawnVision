@@ -1,5 +1,6 @@
 //
-// Created by joran on 06/01/2024.
+// Copyright (c) 2024.
+// Author: Joran
 //
 
 #include "Instance.h"
@@ -13,68 +14,70 @@
 
 namespace DeerVulkan
 {
-    int Instance::Initialize( SDL_Window* pWindow, const char* appTitle, const uint32_t appVersion, const char* const* extensions, const uint32_t extensionsCount ) noexcept
+auto CInstance::Initialize(SDL_Window* pWindow, const char* pAppTitle, const uint32_t appVersion, const char* const* pExtensions, const uint32_t extensionsCount) noexcept -> int
+{
+    m_pInstance = new CVkInstance{};
+    if (m_pInstance->Initialize(pAppTitle, appVersion, pExtensions, extensionsCount) != 0)
     {
-        m_instance = new CVkInstance {};
-        if ( m_instance->Initialize( appTitle, appVersion, extensions, extensionsCount ) )
-        {
-            return -1;
-        }
-        VkSurfaceKHR surface;
-        if ( SDL_Vulkan_CreateSurface( pWindow, m_instance->Handle(), VK_NULL_HANDLE, &surface ) != SDL_TRUE )
-        {
-            return -2;
-        }
-        m_surface = new CVkSurface {};
-        m_surface->Initialize( surface );
-        m_familyIndex = m_instance->FindBestPhysicalDeviceIndex( m_surface );
-        if ( m_familyIndex < 0 )
-        {
-            return -3;
-        }
-        if ( m_instance->CreateDevice( m_device, m_familyIndex ) )
-        {
-            return -4;
-        }
-        return 0;
+        return -1;
     }
-    int Instance::Cleanup() noexcept
+    VkSurfaceKHR pSurface{VK_NULL_HANDLE};
+    if (SDL_Vulkan_CreateSurface(pWindow, m_pInstance->Handle(), VK_NULL_HANDLE, &pSurface) != SDL_TRUE)
     {
+        return -2;
+    }
+    m_surface = new CVkSurface{};
+    m_surface->Initialize(pSurface);
+    m_familyIndex = m_pInstance->FindBestPhysicalDeviceIndex(m_surface);
+    if (m_familyIndex < 0)
+    {
+        return -3;
+    }
+    if (m_pInstance->CreateDevice(m_device, m_familyIndex) != 0)
+    {
+        return -4;
+    }
+    return 0;
+}
 
-        if ( m_device )
-        {
-            if ( m_device->Release() )
-            {
-                return -1;
-            }
-        }
-        if ( m_instance )
-        {
-            if ( m_surface )
-            {
-                m_instance->FreeSurface( m_surface );
-                m_surface = VK_NULL_HANDLE;
-            }
-            delete m_instance;
-            m_instance = nullptr;
-        }
-        return 0;
-    }
-    int Instance::CreatePresentor( Presenter& presentor, const int32_t w, const int32_t h ) const noexcept
+auto CInstance::Cleanup() noexcept -> int
+{
+    if (m_device != nullptr)
     {
-        if ( presentor.Initialize( m_device, m_surface, m_familyIndex, w, h ) )
+        if (m_device->Release() != 0U)
         {
             return -1;
         }
-        return 0;
     }
-    int Instance::RecreatePresentor( Presenter& presentor, const int32_t w, const int32_t h ) const noexcept
+    if (m_pInstance != nullptr)
     {
-        presentor.Cleanup();
-        if ( presentor.Initialize( m_device, m_surface, m_familyIndex, w, h ) )
+        if (m_surface != nullptr)
         {
-            return -1;
+            m_pInstance->FreeSurface(m_surface);
+            m_surface = VK_NULL_HANDLE;
         }
-        return 0;
+        delete m_pInstance;
+        m_pInstance = nullptr;
     }
-}// namespace DeerVulkan
+    return 0;
+}
+
+auto CInstance::CreatePresentor(Presenter& presentor, const int32_t width, const int32_t height) const noexcept -> int
+{
+    if (presentor.Initialize(m_device, m_surface, m_familyIndex, width, height) != 0)
+    {
+        return -1;
+    }
+    return 0;
+}
+
+auto CInstance::RecreatePresentor(Presenter& presentor, const int32_t width, const int32_t height) const noexcept -> int
+{
+    presentor.Cleanup();
+    if (presentor.Initialize(m_device, m_surface, m_familyIndex, width, height) != 0)
+    {
+        return -1;
+    }
+    return 0;
+}
+} // namespace DeerVulkan

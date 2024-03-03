@@ -3,8 +3,8 @@
 // Author: Joran
 //
 
-#include "Texture.h"
+#include "Material.h"
 
 namespace DeerVulkan
 {
-} // namespace DeerVulkan
+} // DeerVulkan

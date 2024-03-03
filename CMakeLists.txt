@@ -20,19 +20,23 @@ add_library(${PROJECT_NAME}
         Includes/FawnVision.hpp
         Includes/FawnVision_Core.hpp
         Includes/FawnVision_Error.hpp
+        Includes/FawnVision_Material.hpp
         Includes/FawnVision_Renderer.hpp
         Includes/FawnVision_Shader.hpp
         Includes/FawnVision_Window.hpp
+        Includes/FawnVision_WindowEvents.hpp
         Includes/Versions.hpp
 
         Source/Error.cpp
         Source/Error.hpp
+        Source/Material.cpp
         Source/ObjectDefinitions.hpp
+        Source/Renderer.cpp
+        Source/Shader.cpp
         Source/Window.cpp
         Source/WindowEvents.cpp
         Source/WindowEvents.hpp
-        Source/Renderer.cpp
-        Source/Shader.cpp
+
         ${API_FILES}
 )
 target_include_directories(${PROJECT_NAME} PRIVATE

@@ -1,43 +1,44 @@
 //
-// Created by Joran on 20/02/2024.
+// Copyright (c) 2024.
+// Author: Joran
 //
 
 #pragma once
 #include "FawnVision_Core.hpp"
-#include <cstdio>
+#include <format>
 
 namespace FawnVision
 {
-    enum class error_code : uint8_t
-    {
-        oke,
-        generic,
-        out_of_memory,
-        max,
-    };
+enum class error_code : uint8_t
+{
+    oke,
+    generic,
+    out_of_memory,
+    max,
+};
 
-    inline struct Error
-    {
-        char str[ MAX_STRING_SIZE ];
-        error_code error;
-    } g_error {};
+struct SError
+{
+    std::array<char, MAX_STRING_SIZE> str;
+    error_code error;
+};
 
-    template<typename... Args>
-    void SetError( const error_code errorCode, const char* fmt, const Args&... args )
-    {
-        // Using std::format to safely format the string
-        int len = std::snprintf( g_error.str, MAX_STRING_SIZE, fmt, args... );
+inline SError g_error{};
 
-        // Ensure the string is null-terminated and fits within the buffer
-        if ( len >= 0 && static_cast<size_t>( len ) < MAX_STRING_SIZE )
-        {
-            g_error.error = errorCode;
-        }
-        else
-        {
-            // Handle error, maybe truncate the string or set a default message
-            std::snprintf( g_error.str, MAX_STRING_SIZE, "Error message too long or formatting error" );
-            g_error.error = error_code::generic;
-        }
+template <typename... Args>
+void SetError(const error_code errorCode, const char* pFmt, const Args&... args)
+{
+    // Ensure the string is null-terminated and fits within the buffer
+    if (const int len{std::format_to_n(g_error.str, MAX_STRING_SIZE, pFmt, args...)}; len >= 0 && static_cast<size_t>(len) < MAX_STRING_SIZE)
+    {
+        g_error.error = errorCode;
     }
-}// namespace FawnVision
+    else
+    {
+        // Handle error, maybe truncate the string or set a default message
+        constexpr std::array<char, 43> ErrorMessage{"Error message too long or formatting error"};
+        std::copy(ErrorMessage.cbegin(), ErrorMessage.cend(), g_error.str.cbegin());
+        g_error.error = error_code::generic;
+    }
+}
+} // namespace FawnVision

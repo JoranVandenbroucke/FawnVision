@@ -1,5 +1,6 @@
 //
-// Created by Joran on 20/02/2024.
+// Copyright (c) 2024.
+// Author: Joran
 //
 
 #pragma once
@@ -7,6 +8,6 @@
 
 namespace FawnVision
 {
-    int32_t CreateShader( const std::vector<ShaderCreateInfo>& createInfo, const Renderer& renderer, Shader& shader );
-    int32_t ReleaseShader( Shader& shader );
-}
+auto CreateShader(const std::vector<ShaderCreateInfo>& createInfo, const Renderer& renderer, Shader& shader) -> int32_t;
+auto ReleaseShader(Shader& shader) -> int32_t;
+} // namespace FawnVision

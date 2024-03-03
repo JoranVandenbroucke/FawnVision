@@ -1,5 +1,6 @@
 //
-// Created by Joran on 16/02/2024.
+// Copyright (c) 2024.
+// Author: Joran
 //
 
 #pragma once
@@ -8,56 +9,57 @@
 
 namespace DeerVulkan
 {
-    class CVkFence final : public CDeviceObject
+class CVkFence final : public CDeviceObject
+{
+public:
+    explicit CVkFence(const CVkDevice* pDevice)
+        : CDeviceObject(pDevice)
     {
-    public:
-        explicit CVkFence( const CVkDevice* pDevice )
-            : CDeviceObject( pDevice )
-        {}
+    }
 
-        ~CVkFence() override
+    ~CVkFence() override
+    {
+        vkDestroyFence(Device()->VkDevice(), m_fence, VK_NULL_HANDLE);
+    }
+
+    auto Initialize() noexcept -> int32_t
+    {
+        constexpr VkFenceCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = VK_NULL_HANDLE,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+        };
+        if (!CheckVkResult(vkCreateFence(Device()->VkDevice(), &createInfo, VK_NULL_HANDLE, &m_fence)))
         {
-            vkDestroyFence( Device()->VkDevice(), m_fence, VK_NULL_HANDLE );
+            return -1;
         }
+        return 0;
+    }
 
-        int32_t Initialize() noexcept
+    auto Wait() const noexcept -> int
+    {
+        if (!CheckVkResult(vkWaitForFences(Device()->VkDevice(), 1, &m_fence, VK_TRUE, UINT64_MAX)))
         {
-            constexpr VkFenceCreateInfo createInfo {
-                    .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-                    .pNext = VK_NULL_HANDLE,
-                    .flags = VK_FENCE_CREATE_SIGNALED_BIT,
-            };
-            if ( !CheckVkResult( vkCreateFence( Device()->VkDevice(), &createInfo, VK_NULL_HANDLE, &m_fence ) ) )
-            {
-                return -1;
-            }
-            return 0;
+            return -1;
         }
+        return 0;
+    }
 
-        int Wait() const noexcept
+    auto Reset() const noexcept -> int
+    {
+        if (!CheckVkResult(vkResetFences(Device()->VkDevice(), 1, &m_fence)))
         {
-            if ( !CheckVkResult( vkWaitForFences( Device()->VkDevice(), 1, &m_fence, VK_TRUE, UINT64_MAX ) ) )
-            {
-                return -1;
-            }
-            return 0;
+            return -1;
         }
+        return 0;
+    }
 
-        int Reset() const noexcept
-        {
-            if ( !CheckVkResult( vkResetFences( Device()->VkDevice(), 1, &m_fence ) ) )
-            {
-                return -1;
-            }
-            return 0;
-        }
+    auto Handle() const noexcept -> VkFence
+    {
+        return m_fence;
+    }
 
-        VkFence Handle() const noexcept
-        {
-            return m_fence;
-        }
-
-    private:
-        VkFence m_fence { VK_NULL_HANDLE };
-    };
-}// namespace DeerVulkan
+private:
+    VkFence m_fence{VK_NULL_HANDLE};
+};
+} // namespace DeerVulkan

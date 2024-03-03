@@ -13,17 +13,19 @@ function(GetVulkanWrapperFiles)
             Vulkan/Wrapper/VkShader.h
             Vulkan/Wrapper/VkSurface.h
             Vulkan/Wrapper/VkSwapChain.h
+
             Vulkan/DeerVulkan.h
             Vulkan/DeerVulkan_Core.h
             Vulkan/Instance.cpp
             Vulkan/Instance.h
+            Vulkan/Material.cpp
+            Vulkan/Material.h
             Vulkan/Presenter.cpp
             Vulkan/Presenter.h
             Vulkan/Shader.cpp
             Vulkan/Shader.h
             Vulkan/Texture.cpp
             Vulkan/Texture.h
-            Vulkan/Versions.hpp
     )
     list(TRANSFORM VULKAN_API_WRAPPER_FILES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/API/")
     set_property(GLOBAL APPEND PROPERTY VULKAN_API_WRAPPER_FILES ${VULKAN_API_WRAPPER_FILES})

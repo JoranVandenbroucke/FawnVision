@@ -1,25 +1,29 @@
 //
-// Created by Joran on 08/01/2024.
+// Copyright (c) 2024.
+// Author: Joran
 //
 
 #pragma once
-#include <SDL_vulkan.h>
+#include <SDL3/SDL_vulkan.h>
+
 #include "../DeerVulkan_Core.h"
 
 namespace DeerVulkan
 {
-    class CVkSurface
+class CVkSurface
+{
+public:
+    void Initialize(const VkSurfaceKHR& pSurface) noexcept
     {
-    public:
-        void Initialize( const VkSurfaceKHR surface ) noexcept
-        {
-            m_surface = surface;
-        };
-        [[nodiscard]] VkSurfaceKHR Handle() const noexcept
-        {
-            return m_surface;
-        }
-    private:
-        VkSurfaceKHR m_surface { VK_NULL_HANDLE };
-    };
-}// namespace DeerVulkan
+        m_surface = pSurface;
+    }
+
+    [[nodiscard]] auto Handle() const noexcept -> VkSurfaceKHR
+    {
+        return m_surface;
+    }
+
+private:
+    VkSurfaceKHR m_surface{VK_NULL_HANDLE};
+};
+} // namespace DeerVulkan

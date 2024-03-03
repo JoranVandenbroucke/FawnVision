@@ -1,5 +1,6 @@
 //
-// Created by Joran on 08/01/2024.
+// Copyright (c) 2024.
+// Author: Joran
 //
 
 #pragma once
@@ -7,22 +8,26 @@
 
 namespace DeerVulkan
 {
-    class CVkDevice;
-    class CVkCommandHandler;
-    class CVkImageView;
-    class CVkSampler;
+class CVkDevice;
+class CVkCommandHandler;
+class CVkImageView;
+class CVkSampler;
 
-    class CTexture
+class CTexture
+{
+public:
+    CTexture() = default;
+
+    int32_t Initialize() noexcept
     {
-    public:
-        CTexture() = default;
+        return -1;
+    }
 
-        int32_t Initialize() noexcept{return -1;}
-        void Cleanup() noexcept;
-        [[nodiscard]] uint32_t MipCount() const noexcept;
+    void Cleanup() noexcept;
+    [[nodiscard]] uint32_t MipCount() const noexcept;
 
-    private:
-        CVkImageView* m_view{BALBINO_NULL};
-        CVkSampler* m_sampler{BALBINO_NULL};
-    };
-}// namespace DeerVulkan
+private:
+    CVkImageView* m_view{BALBINO_NULL};
+    CVkSampler* m_sampler{BALBINO_NULL};
+};
+} // namespace DeerVulkan
