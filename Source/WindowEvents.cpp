@@ -31,67 +31,103 @@ void WaitForWindowEvent(const Window& /*unused*/, const window_event event)
             {
             case SDL_EVENT_WINDOW_SHOWN:           /**< Window has been shown */
             case SDL_EVENT_WINDOW_CLOSE_REQUESTED: /**< The window manager requests that the window be closed */
+            {
                 if ((event & window_event::close) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_HIDDEN: /**< Window has been hidden */
+            {
                 if ((event & window_event::hidden) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_EXPOSED: /**< Window has been exposed and should be redrawn */
+            {
                 if ((event & window_event::exposed) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_MOVED: /**< Window has been moved to data1, data2 */
+            {
                 if ((event & window_event::moved) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_RESIZED: /**< Window has been resized to data1xdata2 */
+            {
                 if ((event & window_event::resize) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_MINIMIZED: /**< Window has been minimized */
+            {
                 if ((event & window_event::resize) == window_event::close || (event & window_event::minimize) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_MAXIMIZED: /**< Window has been maximized */
+            {
                 if ((event & window_event::resize) == window_event::close || (event & window_event::maximize) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_RESTORED: /**< Window has been restored to normal size and position */
+            {
                 if ((event & window_event::resize) == window_event::close || (event & window_event::exposed) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_FOCUS_GAINED: /**< Window has gained keyboard focus */
             case SDL_EVENT_WINDOW_TAKE_FOCUS:   /**< Window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore) */
+            {
                 if ((event & window_event::focus_gained) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_FOCUS_LOST: /**< Window has lost keyboard focus */
+            {
                 if ((event & window_event::focus_lost) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_ENTER_FULLSCREEN: /**< The window has entered fullscreen mode */
+            {
                 if ((event & window_event::resize) == window_event::close || (event & window_event::fullscreen_enter) == window_event::close)
                 {
                     return;
                 }
+                break;
+            }
             case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN: /**< The window has left fullscreen mode */
+            {
                 if ((event & window_event::resize) == window_event::close || (event & window_event::fullscreen_leave) == window_event::close)
                 {
                     return;
                 }
-            default: break;
+                break;
+            }
+            default:{ break;}
             }
         }
     }

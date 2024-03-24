@@ -4,11 +4,13 @@
 //
 
 #pragma once
-#include "../DeerVulkan_Core.h"
-#include "Base.h"
-#include "VkSemaphore.h"
-#include "VkSurface.h"
+#include "../DeerVulkan_Core.hpp"
 
+#include "VkDevice.hpp"
+#include "VkSurface.hpp"
+#include "VkSemaphore.hpp"
+
+#include <vector>
 namespace DeerVulkan
 {
 struct SSwapChainSupportDetails
@@ -18,20 +20,20 @@ struct SSwapChainSupportDetails
     VkSurfaceCapabilitiesKHR capabilities{};
 };
 
-class CVkSwapChain final : public CDeviceObject
+class CVkSwapChain final
 {
-public:
-    explicit CVkSwapChain(const CVkDevice* pDevice)
-        : CDeviceObject{pDevice}
+  public:
+    BALBINO_CONSTEXPR_SINCE_CXX20 BALBINO_EXPLICIT_SINCE_CXX11 CVkSwapChain(const CVkDevice* pDevice)
+        : m_pDevice{pDevice}
     {
     }
 
-    ~CVkSwapChain() override
+    ~CVkSwapChain()
     {
-        vkDestroySwapchainKHR(Device()->VkDevice(), m_swapChain, VK_NULL_HANDLE);
+        vkDestroySwapchainKHR(m_pDevice->Device(), m_swapChain, VK_NULL_HANDLE);
         for (const auto& imageView : m_imageViews)
         {
-            vkDestroyImageView(Device()->VkDevice(), imageView, VK_NULL_HANDLE);
+            vkDestroyImageView(m_pDevice->Device(), imageView, VK_NULL_HANDLE);
         }
         // for (const auto image : m_images )
         // {
@@ -40,8 +42,12 @@ public:
         m_imageViews.clear();
         m_images.clear();
     }
+    CVkSwapChain(const CVkSwapChain& other)                        = delete;
+    CVkSwapChain(CVkSwapChain&& other) noexcept                    = delete;
+    auto operator=(const CVkSwapChain& other) -> CVkSwapChain&     = delete;
+    auto operator=(CVkSwapChain&& other) noexcept -> CVkSwapChain& = delete;
 
-    auto Initialize(const CVkSurface* pSurface, const int32_t width, const int32_t height) noexcept -> int32_t
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto Initialize(const CVkSurface* pSurface, const int32_t width, const int32_t height) BALBINO_NOEXCEPT_SINCE_CXX11 -> int32_t
     {
         m_surface = pSurface;
         const auto& [formats, presentModes, capabilities]{GenerateSupportDetail()};
@@ -56,44 +62,44 @@ public:
         }
 
         const VkSwapchainCreateInfoKHR swapChainCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-            .pNext = VK_NULL_HANDLE,
-            .flags = 0,
-            .surface = pSurface->Handle(),
-            .minImageCount = imageCount,
-            .imageFormat = format,
-            .imageColorSpace = colorSpace,
-            .imageExtent = extent,
-            .imageArrayLayers = 1, // 2 for stereo
-            .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+            .pNext                 = VK_NULL_HANDLE,
+            .flags                 = 0,
+            .surface               = pSurface->Handle(),
+            .minImageCount         = imageCount,
+            .imageFormat           = format,
+            .imageColorSpace       = colorSpace,
+            .imageExtent           = extent,
+            .imageArrayLayers      = 1, // 2 for stereo
+            .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0U,
-            .pQueueFamilyIndices = VK_NULL_HANDLE,
-            .preTransform = capabilities.currentTransform,
-            .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            .presentMode = presentMode,
-            .clipped = VK_TRUE,
-            .oldSwapchain = m_swapChain,
+            .pQueueFamilyIndices   = VK_NULL_HANDLE,
+            .preTransform          = capabilities.currentTransform,
+            .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            .presentMode           = presentMode,
+            .clipped               = VK_TRUE,
+            .oldSwapchain          = m_swapChain,
         };
-        if (!CheckVkResult(vkCreateSwapchainKHR(Device()->VkDevice(), &swapChainCreateInfo, VK_NULL_HANDLE, &m_swapChain)))
+        if (!CheckVkResult(vkCreateSwapchainKHR(m_pDevice->Device(), &swapChainCreateInfo, VK_NULL_HANDLE, &m_swapChain)))
         {
             return -1;
         }
 
-        if (!CheckVkResult(vkGetSwapchainImagesKHR(Device()->VkDevice(), m_swapChain, &imageCount, VK_NULL_HANDLE)))
+        if (!CheckVkResult(vkGetSwapchainImagesKHR(m_pDevice->Device(), m_swapChain, &imageCount, VK_NULL_HANDLE)))
         {
             return -1;
         }
 
         m_images.resize(imageCount);
         m_imageViews.resize(imageCount);
-        if (!CheckVkResult(vkGetSwapchainImagesKHR(Device()->VkDevice(), m_swapChain, &imageCount, m_images.data())))
+        if (!CheckVkResult(vkGetSwapchainImagesKHR(m_pDevice->Device(), m_swapChain, &imageCount, m_images.data())))
         {
             return -1;
         }
         for (size_t i = 0; i < m_images.size(); i++)
         {
-            VkImageViewCreateInfo createInfo{
+            VkImageViewCreateInfo const createInfo{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .pNext = VK_NULL_HANDLE,
                 .flags = 0,
@@ -114,18 +120,18 @@ public:
                     .layerCount = 1,
                 },
             };
-            if (!CheckVkResult(vkCreateImageView(Device()->VkDevice(), &createInfo, VK_NULL_HANDLE, &m_imageViews[i])))
+            if (!CheckVkResult(vkCreateImageView(m_pDevice->Device(), &createInfo, VK_NULL_HANDLE, &m_imageViews[i])))
             {
                 return -1;
             }
         }
         m_clearValue = {{{0.7863F, 0.4386F, 0.426F, 1.0F}}};
 
-        m_colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+        m_colorAttachmentInfo.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
         m_colorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR;
-        m_colorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        m_colorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        m_colorAttachmentInfo.clearValue = m_clearValue;
+        m_colorAttachmentInfo.loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        m_colorAttachmentInfo.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
+        m_colorAttachmentInfo.clearValue  = m_clearValue;
 
         m_renderInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
@@ -135,31 +141,31 @@ public:
                 .offset = {},
                 .extent = extent,
             },
-            .layerCount = 1,
-            .viewMask = 0,
+            .layerCount           = 1,
+            .viewMask             = 0,
             .colorAttachmentCount = 1,
-            .pColorAttachments = &m_colorAttachmentInfo,
-            .pDepthAttachment = VK_NULL_HANDLE,
-            .pStencilAttachment = VK_NULL_HANDLE,
+            .pColorAttachments    = &m_colorAttachmentInfo,
+            .pDepthAttachment     = VK_NULL_HANDLE,
+            .pStencilAttachment   = VK_NULL_HANDLE,
         };
 
         m_imageFormat = format;
-        m_extent = extent;
+        m_extent      = extent;
         return 0;
     }
 
-    auto NextImage(const CVkSemaphore* pSemaphore) noexcept -> int32_t
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto NextImage(const CVkSemaphore* pSemaphore) BALBINO_NOEXCEPT_SINCE_CXX11 -> int32_t
     {
         const VkAcquireNextImageInfoKHR acquireNextImageInfo{
-            .sType = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
-            .pNext = VK_NULL_HANDLE,
-            .swapchain = m_swapChain,
-            .timeout = UINT64_MAX,
-            .semaphore = pSemaphore->Handle(),
-            .fence = VK_NULL_HANDLE,
+            .sType      = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
+            .pNext      = VK_NULL_HANDLE,
+            .swapchain  = m_swapChain,
+            .timeout    = UINT64_MAX,
+            .semaphore  = pSemaphore->Handle(),
+            .fence      = VK_NULL_HANDLE,
             .deviceMask = 1U,
         };
-        if (!CheckVkResult(vkAcquireNextImage2KHR(Device()->VkDevice(), &acquireNextImageInfo, &m_currentImageIdx)))
+        if (!CheckVkResult(vkAcquireNextImage2KHR(m_pDevice->Device(), &acquireNextImageInfo, &m_currentImageIdx)))
         {
             return -1;
         }
@@ -167,37 +173,37 @@ public:
         return 0;
     }
 
-    auto Handle() const noexcept -> const VkSwapchainKHR&
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto Handle() const BALBINO_NOEXCEPT_SINCE_CXX11 -> const VkSwapchainKHR&
     {
         return m_swapChain;
     }
 
-    auto GetRenderInfo() const noexcept -> const VkRenderingInfo&
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto GetRenderInfo() const BALBINO_NOEXCEPT_SINCE_CXX11 -> const VkRenderingInfo&
     {
         return m_renderInfo;
     }
 
-    auto GetImageCount() const noexcept -> int32_t
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto GetImageCount() const BALBINO_NOEXCEPT_SINCE_CXX11 -> int32_t
     {
         return static_cast<int>(m_images.size());
     }
 
-    auto GetImageIndex() const noexcept -> uint32_t
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto GetImageIndex() const BALBINO_NOEXCEPT_SINCE_CXX11 -> uint32_t
     {
         return m_currentImageIdx;
     }
 
-    auto GetFrameIndex() const noexcept -> uint32_t
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto GetFrameIndex() const BALBINO_NOEXCEPT_SINCE_CXX11 -> uint32_t
     {
         return m_currentFrameIdx;
     }
 
-    auto GetFormat() const noexcept -> VkFormat
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto GetFormat() const BALBINO_NOEXCEPT_SINCE_CXX11 -> VkFormat
     {
         return m_imageFormat;
     }
 
-    auto GetImageRenderMemory() const -> VkImageMemoryBarrier
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto GetImageRenderMemory() const BALBINO_NOEXCEPT_SINCE_CXX11-> VkImageMemoryBarrier
     {
         return {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -219,7 +225,7 @@ public:
         };
     }
 
-    auto GetImagePresentMemory() const -> VkImageMemoryBarrier
+    BALBINO_NODISCARD_SINCE_CXX17 BALBINO_CONSTEXPR_SINCE_CXX11 auto GetImagePresentMemory() const BALBINO_NOEXCEPT_SINCE_CXX11-> VkImageMemoryBarrier
     {
         return {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -241,45 +247,46 @@ public:
         };
     }
 
-    void NextFrame()
+    BALBINO_CONSTEXPR_SINCE_CXX23 void NextFrame()BALBINO_NOEXCEPT_SINCE_CXX11
     {
         m_currentFrameIdx = (m_currentFrameIdx + 1) % m_imageViews.size();
     }
 
-private:
+  private:
     std::vector<VkImage> m_images;
     std::vector<VkImageView> m_imageViews;
+    const CVkSurface* m_surface{BALBINO_NULL};
+    const CVkDevice* m_pDevice{BALBINO_NULL};
     VkRenderingInfoKHR m_renderInfo{};
     VkRenderingAttachmentInfoKHR m_colorAttachmentInfo{};
     VkClearValue m_clearValue{};
     VkExtent2D m_extent{};
     VkSwapchainKHR m_swapChain{VK_NULL_HANDLE};
-    const CVkSurface* m_surface{};
     VkFormat m_imageFormat{};
     uint32_t m_currentImageIdx{};
-    uint32_t m_currentFrameIdx{};
+    uint32_t m_currentFrameIdx{};const
 
     auto GenerateSupportDetail() const -> SSwapChainSupportDetails
     {
         SSwapChainSupportDetails details;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(Device()->PhysicalDeviceInfo().device, m_surface->Handle(), &details.capabilities);
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_pDevice->PhysicalDeviceInfo().device, m_surface->Handle(), &details.capabilities);
 
         uint32_t formatCount{};
-        vkGetPhysicalDeviceSurfaceFormatsKHR(Device()->PhysicalDeviceInfo().device, m_surface->Handle(), &formatCount, VK_NULL_HANDLE);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(m_pDevice->PhysicalDeviceInfo().device, m_surface->Handle(), &formatCount, VK_NULL_HANDLE);
 
         if (formatCount != 0)
         {
             details.formats.resize(formatCount);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(Device()->PhysicalDeviceInfo().device, m_surface->Handle(), &formatCount, details.formats.data());
+            vkGetPhysicalDeviceSurfaceFormatsKHR(m_pDevice->PhysicalDeviceInfo().device, m_surface->Handle(), &formatCount, details.formats.data());
         }
 
         uint32_t presentModeCount{};
-        vkGetPhysicalDeviceSurfacePresentModesKHR(Device()->PhysicalDeviceInfo().device, m_surface->Handle(), &presentModeCount, VK_NULL_HANDLE);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(m_pDevice->PhysicalDeviceInfo().device, m_surface->Handle(), &presentModeCount, VK_NULL_HANDLE);
 
         if (presentModeCount != 0)
         {
             details.presentModes.resize(presentModeCount);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(Device()->PhysicalDeviceInfo().device, m_surface->Handle(), &presentModeCount, details.presentModes.data());
+            vkGetPhysicalDeviceSurfacePresentModesKHR(m_pDevice->PhysicalDeviceInfo().device, m_surface->Handle(), &presentModeCount, details.presentModes.data());
         }
 
         return details;

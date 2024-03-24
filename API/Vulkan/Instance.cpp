@@ -3,14 +3,14 @@
 // Author: Joran
 //
 
-#include "Instance.h"
+#include "Instance.hpp"
 
 #include <SDL3/SDL_vulkan.h>
 
-#include "Presenter.h"
-#include "Wrapper/VkDevice.h"
-#include "Wrapper/VkInstance.h"
-#include "Wrapper/VkSurface.h"
+#include "Presenter.hpp"
+#include "Wrapper/VkDevice.hpp"
+#include "Wrapper/VkInstance.hpp"
+#include "Wrapper/VkSurface.hpp"
 
 namespace DeerVulkan
 {
@@ -26,10 +26,9 @@ auto CInstance::Initialize(SDL_Window* pWindow, const char* pAppTitle, const uin
     {
         return -2;
     }
-    m_surface = new CVkSurface{};
-    m_surface->Initialize(pSurface);
+    m_surface = new CVkSurface{pSurface};
     m_familyIndex = m_pInstance->FindBestPhysicalDeviceIndex(m_surface);
-    if (m_familyIndex < 0)
+    if (!m_familyIndex.IsComplete() )
     {
         return -3;
     }
@@ -62,7 +61,7 @@ auto CInstance::Cleanup() noexcept -> int
     return 0;
 }
 
-auto CInstance::CreatePresentor(Presenter& presentor, const int32_t width, const int32_t height) const noexcept -> int
+auto CInstance::CreatePresentor(CPresenter& presentor, const int32_t width, const int32_t height) const noexcept -> int
 {
     if (presentor.Initialize(m_device, m_surface, m_familyIndex, width, height) != 0)
     {
@@ -71,7 +70,7 @@ auto CInstance::CreatePresentor(Presenter& presentor, const int32_t width, const
     return 0;
 }
 
-auto CInstance::RecreatePresentor(Presenter& presentor, const int32_t width, const int32_t height) const noexcept -> int
+auto CInstance::RecreatePresentor(CPresenter& presentor, const int32_t width, const int32_t height) const noexcept -> int
 {
     presentor.Cleanup();
     if (presentor.Initialize(m_device, m_surface, m_familyIndex, width, height) != 0)

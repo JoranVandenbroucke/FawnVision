@@ -2,30 +2,29 @@ set_property(GLOBAL PROPERTY VULKAN_API_WRAPPER_FILES "")
 
 function(GetVulkanWrapperFiles)
     set(VULKAN_API_WRAPPER_FILES
-            Vulkan/Wrapper/Base.h
-            Vulkan/Wrapper/VkCommandHandler.h
-            Vulkan/Wrapper/VkDevice.h
-            Vulkan/Wrapper/VkFence.h
-            Vulkan/Wrapper/VkImageView.h
-            Vulkan/Wrapper/VkInstance.h
-            Vulkan/Wrapper/VkQueue.h
-            Vulkan/Wrapper/VkSemaphore.h
-            Vulkan/Wrapper/VkShader.h
-            Vulkan/Wrapper/VkSurface.h
-            Vulkan/Wrapper/VkSwapChain.h
+            Vulkan/Wrapper/VkCommandPool.hpp
+            Vulkan/Wrapper/VkDevice.hpp
+            Vulkan/Wrapper/VkFence.hpp
+            Vulkan/Wrapper/VkImageView.hpp
+            Vulkan/Wrapper/VkInstance.hpp
+            Vulkan/Wrapper/VkQueue.hpp
+            Vulkan/Wrapper/VkSemaphore.hpp
+            Vulkan/Wrapper/VkShader.hpp
+            Vulkan/Wrapper/VkSurface.hpp
+            Vulkan/Wrapper/VkSwapChain.hpp
 
-            Vulkan/DeerVulkan.h
-            Vulkan/DeerVulkan_Core.h
+            Vulkan/DeerVulkan.hpp
+            Vulkan/DeerVulkan_Core.hpp
             Vulkan/Instance.cpp
-            Vulkan/Instance.h
+            Vulkan/Instance.hpp
             Vulkan/Material.cpp
-            Vulkan/Material.h
+            Vulkan/Material.hpp
             Vulkan/Presenter.cpp
-            Vulkan/Presenter.h
+            Vulkan/Presenter.hpp
             Vulkan/Shader.cpp
-            Vulkan/Shader.h
+            Vulkan/Shader.hpp
             Vulkan/Texture.cpp
-            Vulkan/Texture.h
+            Vulkan/Texture.hpp
     )
     list(TRANSFORM VULKAN_API_WRAPPER_FILES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/API/")
     set_property(GLOBAL APPEND PROPERTY VULKAN_API_WRAPPER_FILES ${VULKAN_API_WRAPPER_FILES})

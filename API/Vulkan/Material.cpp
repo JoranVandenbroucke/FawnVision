@@ -3,7 +3,7 @@
 // Author: Joran
 //
 
-#include "Material.h"
+#include "Material.hpp"
 
 namespace DeerVulkan
 {

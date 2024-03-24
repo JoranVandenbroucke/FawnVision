@@ -3,20 +3,30 @@
 // Author: Joran
 //
 
-#include "Presenter.h"
+#include "Presenter.hpp"
 
 #include "FawnVision_Core.hpp"
-#include "Wrapper/VkCommandHandler.h"
-#include "Wrapper/VkQueue.h"
-#include "Wrapper/VkSemaphore.h"
-#include "Wrapper/VkSwapChain.h"
+#include "Wrapper/VkCommandPool.hpp"
+#include "Wrapper/VkQueue.hpp"
+#include "Wrapper/VkSemaphore.hpp"
+#include "Wrapper/VkSwapChain.hpp"
 
 namespace DeerVulkan
 {
-auto CPresenter::Initialize(const CVkDevice* pDevice, const CVkSurface* pSurface, const int32_t familyIndex, const int32_t width, const int32_t height) noexcept -> int
+auto CPresenter::Initialize(const CVkDevice* pDevice, const CVkSurface* pSurface, const SQueueFamily& queueFamily, const int32_t width, const int32_t height) noexcept -> int
 {
-    m_queue = new CVkQueue{pDevice};
-    if (m_queue->Initialize(familyIndex) != 0)
+    m_queue[g_graphicsQueueId] = new CVkQueue{pDevice, static_cast<uint32_t>(queueFamily.graphicsFamily), 0U};
+    if (m_queue[g_graphicsQueueId]->Initialize() != 0)
+    {
+        return -1;
+    }
+    m_queue[g_computeQueueId] = new CVkQueue{pDevice, static_cast<uint32_t>(queueFamily.graphicsFamily), 1U};
+    if (m_queue[g_computeQueueId]->Initialize() != 0)
+    {
+        return -1;
+    }
+    m_queue[g_presentQueueId] = new CVkQueue{pDevice, static_cast<uint32_t>(queueFamily.presentFamily), queueFamily.graphicsFamily == queueFamily.presentFamily? 2U:0U};
+    if (m_queue[g_presentQueueId]->Initialize() != 0)
     {
         return -1;
     }
@@ -25,18 +35,18 @@ auto CPresenter::Initialize(const CVkDevice* pDevice, const CVkSurface* pSurface
     {
         return -1;
     }
-    m_timelineSemaphore = new CVkSemaphore{pDevice};
-    if (m_timelineSemaphore->Initialize(true) != 0)
+    m_timelineSemaphore = new CVkSemaphore{pDevice,true};
+    if (m_timelineSemaphore->Initialize() != 0)
     {
         return -1;
     }
-    m_binarySemaphore = new CVkSemaphore{pDevice};
-    if (m_binarySemaphore->Initialize(false) != 0)
+    m_binarySemaphore = new CVkSemaphore{pDevice,false};
+    if (m_binarySemaphore->Initialize() != 0)
     {
         return -1;
     }
-    m_commandHandler = new CVkCommandHandler{pDevice};
-    if (m_commandHandler->Initialize(m_swapChain, familyIndex) != 0)
+    m_commandHandler = new CVkCommandPool{pDevice, m_swapChain};
+    if (m_commandHandler->Initialize(familyIndex) != 0)
     {
         return -1;
     }
@@ -61,9 +71,17 @@ void CPresenter::Cleanup() const noexcept
     {
         m_swapChain->Release();
     }
-    if (m_queue != nullptr)
+    if (m_queue[g_graphicsQueueId] != nullptr)
     {
-        m_queue->Release();
+        m_queue[g_graphicsQueueId]->Release();
+    }
+    if (m_queue[g_computeQueueId] != nullptr)
+    {
+        m_queue[g_computeQueueId]->Release();
+    }
+    if (m_queue[g_presentQueueId] != nullptr)
+    {
+        m_queue[g_presentQueueId]->Release();
     }
 }
 
@@ -99,16 +117,16 @@ auto CPresenter::EndRender() const noexcept -> int
     {
         return -1;
     }
-    if (m_queue->Execute(m_timelineSemaphore, m_commandHandler) != 0)
+    if (m_queue[g_presentQueueId]->Execute(m_timelineSemaphore, m_commandHandler) != 0)
     {
         return -1;
     }
-    if (m_queue->Present(m_swapChain, m_binarySemaphore, m_swapChain->GetImageIndex()) != 0)
+    if (m_queue[g_presentQueueId]->Present(m_swapChain, m_binarySemaphore, m_swapChain->GetImageIndex()) != 0)
     {
         return -1;
     }
     m_swapChain->NextFrame();
-    m_queue->WaitIdle();
+    m_queue[g_presentQueueId]->WaitIdle();
     return 0;
 }
 

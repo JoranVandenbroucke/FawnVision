@@ -5,6 +5,8 @@
 
 #pragma once
 #include "FawnVision_Error.hpp"
+#include "FawnVision_Material.hpp"
 #include "FawnVision_Renderer.hpp"
 #include "FawnVision_Shader.hpp"
 #include "FawnVision_Window.hpp"
+#include "FawnVision_WindowEvents.hpp"

@@ -4,12 +4,12 @@
 //
 
 #pragma once
-#include "DeerVulkan_Core.h"
+#include "DeerVulkan_Core.hpp"
 
 namespace DeerVulkan
 {
 class CVkDevice;
-class CVkCommandHandler;
+class CVkCommandPool;
 class CVkImageView;
 class CVkSampler;
 

@@ -4,13 +4,13 @@
 //
 
 #pragma once
-
+#ifndef VERSIONS_HPP
+#define VERSIONS_HPP
 #include <cstdint>
 #include <locale>
 #include <string_view>
 #include <type_traits>
 
-#define BALBINO_NULL nullptr
 
 #if defined(_WIN32)
 #    define BALBINO_PLATFORM_WINDOWS
@@ -52,11 +52,13 @@
 #    define BALBINO_CONSTEXPR_SINCE_CXX11
 #    define BALBINO_CONSTEXPR_SINCE_CXX11
 #    define BALBINO_CONSTEXPR const
+#    define BALBINO_NULL NULL
 #else
 #    define BALBINO_NOEXCEPT_SINCE_CXX11 noexcept
 #    define BALBINO_CONSTEXPR_SINCE_CXX11 constexpr
 #    define BALBINO_EXPLICIT_SINCE_CXX11 explicit
 #    define BALBINO_CONSTEXPR constexpr
+#    define BALBINO_NULL nullptr
 #endif
 
 #if BALBINO_STD_VERSION < 14
@@ -175,24 +177,21 @@ template <typename TEnumType>
 concept EnumFlagType = SIsEnumFlag<TEnumType>::value;
 
 template <EnumType TEnumType>
-constexpr auto operator|(const TEnumType a_Lhs, const TEnumType a_Rhs) noexcept -> TEnumType
-    requires EnumFlagType<TEnumType>
+constexpr auto operator|(const TEnumType a_Lhs, const TEnumType a_Rhs) noexcept -> TEnumType requires EnumFlagType<TEnumType>
 {
     using UnderlyingType = std::underlying_type_t<TEnumType>;
     return static_cast<const TEnumType>(static_cast<const UnderlyingType>(a_Lhs) | static_cast<const UnderlyingType>(a_Rhs));
 }
 
 template <EnumType TEnumType>
-constexpr auto operator&(const TEnumType a_Lhs, const TEnumType a_Rhs) noexcept -> TEnumType
-    requires EnumFlagType<TEnumType>
+constexpr auto operator&(const TEnumType a_Lhs, const TEnumType a_Rhs) noexcept -> TEnumType requires EnumFlagType<TEnumType>
 {
     using UnderlyingType = std::underlying_type_t<TEnumType>;
     return static_cast<TEnumType>(static_cast<const UnderlyingType>(a_Lhs) & static_cast<const UnderlyingType>(a_Rhs));
 }
 
 template <EnumType TEnumType>
-constexpr auto operator^(const TEnumType a_Lhs, const TEnumType a_Rhs) noexcept -> TEnumType
-    requires EnumFlagType<TEnumType>
+constexpr auto operator^(const TEnumType a_Lhs, const TEnumType a_Rhs) noexcept -> TEnumType requires EnumFlagType<TEnumType>
 {
     using UnderlyingType = std::underlying_type_t<TEnumType>;
     return static_cast<const TEnumType>(static_cast<const UnderlyingType>(a_Lhs) ^ static_cast<const UnderlyingType>(a_Rhs));
@@ -205,3 +204,4 @@ constexpr auto operator^(const TEnumType a_Lhs, const TEnumType a_Rhs) noexcept 
     };
 
 #pragma endregion
+#endif

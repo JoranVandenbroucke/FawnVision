@@ -12,7 +12,7 @@
 #define FV_DEFINE_HANDLE(object) using object = struct object##_T*
 
 #ifdef BALBINO_VULKAN
-#    include "DeerVulkan.h"
+#    include "DeerVulkan.hpp"
 #endif
 
 namespace FawnVision

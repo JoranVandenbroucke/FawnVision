@@ -5,7 +5,7 @@
 
 #pragma once
 #include "Versions.hpp"
-#include "Wrapper/VkShader.h"
+#include "Wrapper/VkShader.hpp"
 
 namespace DeerVulkan
 {

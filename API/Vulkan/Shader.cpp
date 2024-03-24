@@ -3,7 +3,7 @@
 // Author: Joran
 //
 
-#include "Shader.h"
+#include "Shader.hpp"
 
 namespace DeerVulkan
 {

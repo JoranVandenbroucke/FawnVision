@@ -3,7 +3,7 @@
 // Author: Joran
 //
 
-#include "Texture.h"
+#include "Texture.hpp"
 
 namespace DeerVulkan
 {
