@@ -3,60 +3,63 @@ set(PROJECT_NAME FawnVision)
 set(ROOT_NAMESPACE ${PROJECT_NAME})
 project(${PROJECT_NAME})
 
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES ON)
+
+
 option(BALBINO_VULKAN "Build with the Renderer with Vulkan" ON)
 option(BALBINO_BUILD_SDL "Build SDL (OFF when just include or depend on it" ON)
 set(SDL_TEST_LIBRARY OFF CACHE STRING "Build the SDL3_test library")
-set(SDL_LOCATION "" CACHE STRING "The location of SDL3")
 set(TARGET_OUTPUT ${PROJECT_NAME} CACHE STRING "Overwrite this with the exe/base project name")
 
-set(API_FILES)
 if (BALBINO_VULKAN)
-    include(API/Vulkan.cmake)
-    GetVulkanWrapperFiles()
-    get_property(VULKAN_API_WRAPPER_FILES GLOBAL PROPERTY VULKAN_API_WRAPPER_FILES)
-    set(API_FILES ${VULKAN_API_WRAPPER_FILES})
+    include(Source/API/Vulkan.cmake)
 endif ()
+
 add_library(${PROJECT_NAME}
-        Includes/FawnVision.hpp
-        Includes/FawnVision_Core.hpp
-        Includes/FawnVision_Error.hpp
-        Includes/FawnVision_Material.hpp
-        Includes/FawnVision_Renderer.hpp
-        Includes/FawnVision_Shader.hpp
-        Includes/FawnVision_Window.hpp
-        Includes/FawnVision_WindowEvents.hpp
-        Includes/Versions.hpp
-
-        Source/Error.cpp
-        Source/Error.hpp
-        Source/Material.cpp
-        Source/ObjectDefinitions.hpp
-        Source/Renderer.cpp
-        Source/Shader.cpp
-        Source/Window.cpp
-        Source/WindowEvents.cpp
-        Source/WindowEvents.hpp
-
-        ${API_FILES}
-)
-target_include_directories(${PROJECT_NAME} PRIVATE
-        Includes
 )
 
-if (SDL_LOCATION STREQUAL "")
-    find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
-    set(SDL_LIB SDL3::SDL3)
-else ()
-    if (BALBINO_BUILD_SDL)
-        add_subdirectory(${SDL_LOCATION} SDL3)
-    endif ()
-    add_dependencies(${PROJECT_NAME} SDL3::SDL3)
-    set(SDL_LIB SDL3::SDL3)
+target_sources(${PROJECT_NAME}
+        PRIVATE
+        ${VULKAN_API_FILES}
+        Source/Headers/Versions.hpp
 
-    target_include_directories(${PROJECT_NAME} PUBLIC ${SDL_LOCATION}/include)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ${SDL_LIB})
-endif ()
+        PUBLIC
+        FILE_SET CXX_MODULES FILES
+        Source/Interface/Renderer.ixx
+        Source/Interface/RenderPass.ixx
+        Source/Interface/Window.ixx
+)
+target_include_directories(${PROJECT_NAME} PRIVATE Source/Headers)
 
+find_package(SDL3 QUIET)
+if(SDL3_FOUND)
+    message(STATUS "Using SDL3 via find_package")
+endif()
+
+if(NOT SDL3_FOUND AND EXISTS "${CMAKE_CURRENT_LIST_DIR}/SDL/CMakeLists.txt")
+    add_subdirectory(SDL EXCLUDE_FROM_ALL)
+    message(STATUS "Using SDL3 via add_subdirectory")
+    set(SDL3_FOUND TRUE)
+endif()
+
+if(NOT SDL3_FOUND)
+    include(FetchContent)
+    set(SDL_SHARED TRUE CACHE BOOL "Build a SDL shared library (if available)")
+    set(SDL_STATIC TRUE CACHE BOOL "Build a SDL static library (if available)")
+    FetchContent_Declare(
+        SDL
+        GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+        GIT_TAG main  # Replace this with a particular git tag or git hash
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+    )
+    message(STATUS "Using SDL3 via FetchContent")
+    FetchContent_MakeAvailable(SDL)
+    set_property(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/_deps/sdl-src" PROPERTY EXCLUDE_FROM_ALL TRUE)
+endif()
+set(SDL_LIB SDL3::SDL3)
 
 if (BALBINO_VULKAN)
     ConfigVulkanWrapper(${PROJECT_NAME})

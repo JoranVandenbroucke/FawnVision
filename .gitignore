@@ -460,6 +460,5 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 .idea/
-
-3rdParty/Vulkan/
-Build-*/
+Build*/
+3rdParty/

@@ -6,6 +6,7 @@ Checks: >
   cert-*,
   clang-*,
   cppcoreguidelines-*,
+  -cppcoreguidelines-owning-memory
   google-*,
   llvm-*,
   misc-*,
