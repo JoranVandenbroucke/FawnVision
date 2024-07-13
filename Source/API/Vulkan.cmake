@@ -1,9 +1,9 @@
 set(VULKAN_API_FILES
-        Vulkan/Wrapper/VkCommandPool.hpp
+        Vulkan/Wrapper/VkCommand.hpp
         Vulkan/Wrapper/VkDevice.hpp
         Vulkan/Wrapper/VkFence.hpp
-        Vulkan/Wrapper/VkImageView.hpp
         Vulkan/Wrapper/VkInstance.hpp
+        Vulkan/Wrapper/VkPhysicalDevice.hpp
         Vulkan/Wrapper/VkQueue.hpp
         Vulkan/Wrapper/VkSemaphore.hpp
         Vulkan/Wrapper/VkShader.hpp
@@ -12,16 +12,6 @@ set(VULKAN_API_FILES
 
         Vulkan/DeerVulkan.hpp
         Vulkan/DeerVulkan_Core.hpp
-        Vulkan/Instance.cpp
-        Vulkan/Instance.hpp
-        Vulkan/Material.cpp
-        Vulkan/Material.hpp
-        Vulkan/Presenter.cpp
-        Vulkan/Presenter.hpp
-        Vulkan/Shader.cpp
-        Vulkan/Shader.hpp
-        Vulkan/Texture.cpp
-        Vulkan/Texture.hpp
 )
 list(TRANSFORM VULKAN_API_FILES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/Source/API/")
 

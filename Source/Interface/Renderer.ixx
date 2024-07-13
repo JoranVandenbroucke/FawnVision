@@ -4,169 +4,154 @@
 //
 
 module;
-#include "API/Vulkan/Instance.hpp"
-#include "API/Vulkan/Presenter.hpp"
 
-#include <cstdint>
-#include <cstring>
-#include <unordered_map>
+#include "API/Vulkan/DeerVulkan.hpp"
 
 export module FawnVision.Renderer;
-import FawnVision.Window;
 
-#if defined __clang__ || defined __GNUC__
-#    define PRETTY_FUNCTION __PRETTY_FUNCTION__
-#    define PRETTY_FUNCTION_PREFIX '='
-#    define PRETTY_FUNCTION_SUFFIX ']'
-#elif defined _MSC_VER
-#    define PRETTY_FUNCTION __FUNCSIG__
-#    define PRETTY_FUNCTION_PREFIX '<'
-#    define PRETTY_FUNCTION_SUFFIX '>'
-#endif
-
-template <typename T>
-constexpr auto ToString() -> std::string_view
-{
-    constexpr std::string_view functionName{PRETTY_FUNCTION};
-    constexpr uint64_t first{functionName.find_first_not_of(' ', functionName.find_first_of(PRETTY_FUNCTION_PREFIX) + 1)};
-    return functionName.substr(first, functionName.find_last_of(PRETTY_FUNCTION_SUFFIX) - first);
-}
-
-template <typename T>
-constexpr auto Hash() -> std::size_t
-{
-    return std::hash<std::string_view>{}(ToString<T>());
-}
-
+import FawnVision.WindowTypes;
+import FawnVision.RendererTypes;
+import FawnVision.RenderGraph;
 
 namespace FawnVision
 {
-export struct SRenderer
+inline int InitializeComponents(const SWindow& window, SRenderer& renderer)
 {
-    DeerVulkan::CVkInstance m_instance;
-    DeerVulkan::CVkDevice m_device;
-    DeerVulkan::CVkSurface m_surface;
-    DeerVulkan::SQueueFamily m_familyIndex{};
-
-    DeerVulkan::CPresenter presenter{m_device, m_surface, m_familyIndex};
-    std::array<DeerVulkan::CVkQueue, DeerVulkan::g_queueCount> m_queue;
-    DeerVulkan::CVkSwapChain m_swapChain{m_device, m_surface};
-    DeerVulkan::CVkSemaphore m_timelineSemaphore{m_device, true};
-    DeerVulkan::CVkSemaphore m_binarySemaphore{m_device, false};
-    DeerVulkan::CVkCommandPool m_commandPool{m_device, m_swapChain};
-    DeerVulkan::CVkCommandBuffer* m_commandBuffer{nullptr};
-};
-
-export struct SRendererCreateInfo{};
-
-auto InitializeRenderer(const SWindow& window, SRenderer& renderer) -> int32_t
-{
-    if (const int32_t returnValue{renderer.instance.Initialize(window.pWindow, "Fixme", 0U, window.extensions, window.extensionCount)}; returnValue != 0)
+    if (Initialize(renderer.queue[g_graphicsQueueId], renderer.device, renderer.device.queueFamily.graphicsFamily, 0U) != 0)
     {
         return -1;
     }
-    if (renderer.instance.CreatePresentor(renderer.presenter, window.width, window.height) != 0)
+    if (Initialize(renderer.queue[g_computeQueueId], renderer.device, renderer.device.queueFamily.graphicsFamily, 1U) != 0)
+    {
+        return -1;
+    }
+    if (Initialize(renderer.queue[g_presentQueueId], renderer.device, renderer.device.queueFamily.presentFamily, renderer.device.queueFamily.graphicsFamily == renderer.device.queueFamily.presentFamily ? 2U : 0U) != 0)
+    {
+        return -1;
+    }
+    if (Initialize(renderer.swapChain, renderer.device, renderer.surface, window.width, window.height) != 0)
+    {
+        return -1;
+    }
+    if (InitializeSemaphore(renderer.timelineSemaphore, renderer.device, true) != 0)
+    {
+        return -1;
+    }
+    if (InitializeSemaphore(renderer.binarySemaphore, renderer.device, false) != 0)
+    {
+        return -1;
+    }
+    if (Initialize(renderer.commandPool, renderer.device, renderer.device.queueFamily.graphicsFamily) != 0)
+    {
+        return -1;
+    }
+    if (CreateCommandBuffer(renderer.instance, renderer.device, renderer.commandPool, 1U, renderer.commandBuffer))
     {
         return -1;
     }
     return 0;
 }
 
-export auto CreateRenderer(const SWindow& window, const SRendererCreateInfo& createInfo, SRenderer& renderer) -> int32_t
+inline void CleanupComponents(SRenderer& renderer)
 {
-    constexpr SWindow emptyWindow{};
-    constexpr SRenderer empty{};
-    if (std::memcmp(&window, &emptyWindow, sizeof(SWindow)) == 0 || std::memcmp(&renderer, &empty, sizeof(SRenderer)) != 0)
+    CleanupBuffer(renderer.device, renderer.commandPool, renderer.commandBuffer);
+    Cleanup(renderer.device, renderer.commandPool);
+    Cleanup(renderer.device, renderer.binarySemaphore);
+    Cleanup(renderer.device, renderer.timelineSemaphore);
+    Cleanup(renderer.device, renderer.swapChain);
+    Cleanup(renderer.queue[g_presentQueueId]);
+    Cleanup(renderer.queue[g_computeQueueId]);
+    Cleanup(renderer.queue[g_graphicsQueueId]);
+}
+
+auto BeginRender(SRenderer& renderer) noexcept -> int
+{
+    uint64_t currentSemaphoreValue{};
+    if (Value(renderer.device, renderer.timelineSemaphore, currentSemaphoreValue) != 0)
     {
         return -1;
     }
+    if (Wait(renderer.device, renderer.timelineSemaphore, currentSemaphoreValue) != 0)
+    {
+        return -1;
+    }
+    if (NextImage(renderer.device, renderer.swapChain, renderer.binarySemaphore) != 0)
+    {
+        return -1;
+    }
+    if (BeginCommand(renderer.commandBuffer) != 0)
+    {
+        return -1;
+    }
+    MakeReadyToRender(renderer.commandBuffer, renderer.swapChain);
+    BeginRender(renderer.commandBuffer, renderer.swapChain);
+    return 0;
+}
 
-    renderer = SRenderer{};
-    if (InitializeRenderer(window, renderer) != 0)
+auto EndRender(SRenderer& renderer) noexcept -> int
+{
+    EndRender(renderer.commandBuffer);
+    MakeReadyToPresent(renderer.commandBuffer, renderer.swapChain);
+    if (EndCommand(renderer.commandBuffer) != 0)
+    {
+        return -1;
+    }
+    if (Execute(renderer.device, renderer.queue[g_presentQueueId], renderer.timelineSemaphore, renderer.commandBuffer) != 0)
+    {
+        return -1;
+    }
+    if (Present(renderer.queue[g_presentQueueId], renderer.swapChain, renderer.binarySemaphore) != 0)
+    {
+        return -1;
+    }
+    NextFrame(renderer.swapChain);
+    WaitIdle(renderer.queue[g_presentQueueId]);
+    return 0;
+}
+
+export auto CreateRenderer(const SWindow& window, SRenderer& renderer) -> int32_t
+{
+    if (InitializeInstance(renderer.instance, "FixMe", VK_MAKE_VERSION(0, 1, 0), window.extensions, window.extensionCount) != 0)
+    {
+        return -1;
+    }
+    if (InitializeSurface(window.pWindow, renderer.instance, renderer.surface) != 0)
+    {
+        return -1;
+    }
+    if (InitializeDevice(renderer.device, renderer.instance, renderer.surface) != 0)
+    {
+        return -1;
+    }
+    if (InitializeComponents(window, renderer) != 0)
     {
         return -1;
     }
     return 0;
 }
 
-export auto ReleaseRenderer(SRenderer& renderer) -> int32_t
+export inline void ReleaseRenderer(SRenderer& renderer)
 {
-    constexpr SRenderer empty{};
-    if (std::memcmp(&renderer, &empty, sizeof(SRenderer)) == 0)
-    {
-        return -1;
-    }
-    renderer.presenter.Cleanup();
-    renderer.instance.Cleanup();
-
-    std::memset(&renderer, sizeof(SRenderer), 0);
-    return 0;
+    CleanupComponents(renderer);
+    Cleanup(renderer.device);
+    Cleanup(renderer.instance, renderer.surface);
+    Cleanup(renderer.instance);
 }
 
-// todo: implement
-export auto ResizeRender(const SWindow& window, const SRenderer& renderer) -> int32_t
+export inline auto RecreateRenderer(const SWindow& window, SRenderer& renderer)
 {
-    constexpr SRenderer empty{};
-    if (std::memcmp(&renderer, &empty, sizeof(SRenderer)) == 0)
+    CleanupComponents(renderer);
+    if (InitializeComponents(window, renderer) != 0)
     {
         return -1;
     }
     return 0;
 }
 
-export auto StartRender(SRenderer& renderer) -> int32_t
+export inline void RenderFrame(SRenderer& renderer, const SRenderGraph& renderGraph)
 {
-    constexpr SRenderer empty{};
-    if (std::memcmp(&renderer, &empty, sizeof(SRenderer)) == 0)
-    {
-        return -1;
-    }
-    renderer.currentRenderPassIndex = 0U;
-    return 0;
-}
-
-export template <typename PassData>
-auto AddCompuyePass(const SRenderer& renderer, const std::string_view name, SComputePass& computePass, PassData& passData) -> int32_t
-{
-    constexpr SRenderer empty{};
-    if (std::memcmp(&renderer, &empty, sizeof(SRenderer)) == 0)
-    {
-        return -1;
-    }
-
-    return 0;
-}
-
-export template <typename PassData>
-auto AddRasterePass(const SRenderer& renderer, const std::string_view name, SRasterPass& rasterRenderPass, PassData& passData) -> int32_t
-{
-    constexpr SRenderer empty{};
-    if (std::memcmp(&renderer, &empty, sizeof(SRenderer)) == 0)
-    {
-        return -1;
-    }
-
-    return 0;
-}
-
-export template <typename PassData>
-auto AddRenderPass(const SRenderer& renderer, const std::string_view name, SRenderPass& rasterRenderPass, PassData& passData) -> int32_t
-{
-    constexpr SRenderer empty{};
-    if (std::memcmp(&renderer, &empty, sizeof(SRenderer)) == 0)
-    {
-        return -1;
-    }
-    return 0;
-}
-
-export auto CleanupPasses(const SRenderer& renderer)
-{
-    constexpr SRenderer empty{};
-    if (std::memcmp(&renderer, &empty, sizeof(SRenderer)) == 0)
-    {
-        return -1;
-    }
-    return 0;
+    BeginRender(renderer);
+    ExecuteAll(renderer, renderGraph);
+    EndRender(renderer);
 }
 } // namespace FawnVision

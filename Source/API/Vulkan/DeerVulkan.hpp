@@ -5,16 +5,11 @@
 
 #pragma once
 
-#include "Instance.hpp"
-#include "Presenter.hpp"
-#include "Shader.hpp"
-
-#include "Wrapper/VkCommandBuffer.hpp"
-#include "Wrapper/VkCommandPool.hpp"
+#include "Wrapper/VkCommand.hpp"
 #include "Wrapper/VkDevice.hpp"
 #include "Wrapper/VkFence.hpp"
-#include "Wrapper/VkImageView.hpp"
 #include "Wrapper/VkInstance.hpp"
+#include "Wrapper/VkPhysicalDevice.hpp"
 #include "Wrapper/VkQueue.hpp"
 #include "Wrapper/VkSemaphore.hpp"
 #include "Wrapper/VkShader.hpp"

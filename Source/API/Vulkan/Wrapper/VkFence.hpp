@@ -1,6 +1,6 @@
 //
 // Copyright (c) 2024.
-// Author: Joran
+// Author: Joran.
 //
 
 #pragma once
@@ -10,64 +10,44 @@
 
 namespace DeerVulkan
 {
-class CVkFence final
+struct SVkFence
 {
-public:
-    constexpr explicit CVkFence(const CVkDevice& pDevice)
-        : m_pDevice{pDevice}
-    {
-    }
+    VkFence fence;
+};
 
-    ~CVkFence()
-    {
-        vkDestroyFence(m_pDevice.Device(), m_fence, VK_NULL_HANDLE);
-    }
+inline auto Initialize(const SVkDevice& device, SVkFence& fence)
+{
 
-    CVkFence(const CVkFence& other) = delete;
-    CVkFence(CVkFence&& other) noexcept = delete;
-    auto operator=(const CVkFence& other) -> CVkFence& = delete;
-    auto operator=(CVkFence&& other) -> CVkFence& = delete;
-
-    [[nodiscard]] auto Initialize() noexcept -> int32_t
-    {
-        constexpr VkFenceCreateInfo createInfo{
+    if (constexpr VkFenceCreateInfo createInfo{
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .flags = VK_FENCE_CREATE_SIGNALED_BIT,
         };
-        if (!CheckVkResult(vkCreateFence(m_pDevice.Device(), &createInfo, VK_NULL_HANDLE, &m_fence)))
-        {
-            return -1;
-        }
-        return 0;
-    }
-
-    [[nodiscard]] auto Wait() const noexcept -> int
+        !CheckVkResult(vkCreateFence(device.device, &createInfo, VK_NULL_HANDLE, &fence.fence)))
     {
-        if (!CheckVkResult(vkWaitForFences(m_pDevice.Device(), 1, &m_fence, VK_TRUE, UINT64_MAX)))
-        {
-            return -1;
-        }
-        return 0;
+        return -1;
     }
-
-    [[nodiscard]] auto Reset() const noexcept -> int
+    return 0;
+}
+inline void Cleanup(const SVkDevice& device, SVkFence& fence)
+{
+    vkDestroyFence(device.device, fence.fence, nullptr);
+    fence.fence = nullptr;
+}
+inline auto wait(const SVkDevice& device, const SVkFence& fence)
+{
+    if (!CheckVkResult(vkWaitForFences(device.device, 1, &fence.fence, VK_TRUE, UINT64_MAX)))
     {
-        if (!CheckVkResult(vkResetFences(m_pDevice.Device(), 1, &m_fence)))
-        {
-            return -1;
-        }
-        return 0;
+        return -1;
     }
-
-    [[nodiscard]] constexpr auto Handle() const noexcept -> VkFence
+    return 0;
+}
+inline auto Reset(const SVkDevice& device, const SVkFence& fence)
+{
+    if (!CheckVkResult(vkResetFences(device.device, 1, &fence.fence)))
     {
-        return m_fence;
+        return -1;
     }
-
-private:
-    const CVkDevice& m_pDevice;
-    VkFence m_fence{VK_NULL_HANDLE};
-};
-
+    return 0;
+}
 } // namespace DeerVulkan

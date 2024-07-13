@@ -4,57 +4,24 @@
 //
 
 module;
-#include "Versions.hpp"
+#include "API/Vulkan/Wrapper/VkCommand.hpp"
 
-#include <cstdint>
 #include <functional>
-#include <vector>
 
 export module FawnVision.RenderPass;
+import FawnVision.SharedObjectPool;
 
 namespace FawnVision
 {
-class CSharedObjectPoolBase
+export struct SRenderContext
 {
-public:
-    virtual ~CSharedObjectPoolBase() = default;
-    CSharedObjectPoolBase(const CSharedObjectPoolBase& other) = delete;
-    CSharedObjectPoolBase(CSharedObjectPoolBase&& other) BALBINO_NOEXCEPT_SINCE_CXX11 = delete;
-    auto operator=(const CSharedObjectPoolBase& other) -> CSharedObjectPoolBase& = delete;
-    auto operator=(CSharedObjectPoolBase&& other) BALBINO_NOEXCEPT_SINCE_CXX11 -> CSharedObjectPoolBase& = delete;
+    DeerVulkan::SVkCommandBuffer& commandBuffer;
 };
 
-template <class T>
-struct SSharedObjectPool final : CSharedObjectPoolBase
+export struct SRenderPassCore
 {
-    SSharedObjectPool() = default;
-    std::vector<std::shared_ptr<T>> pool{};
-};
-
-enum class depth_acces :uint8_t
-{
-    read = 1 << 0,
-    write = 1 << 1,
-    read_write = read | write
-};
-
-enum class access_flags :uint8_t
-{
-    none = 0,
-    read = 1 << 0,
-    write = 1 << 1,
-    discard = 1 << 2,
-    write_all = write | discard,
-    read_write = read | write
-};
-
-struct SRenderPass
-{
-};
-
-template <class RenderPass>
-struct SRenderPassBase : SRenderPass
-{
+    virtual ~SRenderPassCore()                  = default;
+    virtual void Execute(const SRenderContext&) = 0;
     bool allowGlobalState{false};
     bool allowPassCulling{true};
     bool allowRendererListCulling{true};
@@ -62,104 +29,66 @@ struct SRenderPassBase : SRenderPass
     bool enableFoveatedRasterization{false};
     bool isCompute{false};
     int index{-1};
-    std::function<void(RenderPass&)> renderFunction;
-    RenderPass data{};
 };
 
-export template <class RenderPass>
-struct SComputePass final : SRenderPassBase<RenderPass>
+export template <class PassData>
+struct SRenderPassBase : SRenderPassCore
 {
-
-};
-
-export template <class RenderPass>
-struct SRasterPass final : SRenderPassBase<RenderPass>
-{
-
-};
-
-inline std::unordered_map<uint32_t, std::shared_ptr<CSharedObjectPoolBase>> g_allocatedPools{};
-inline std::list<std::shared_ptr<SRenderPass>> g_renderPasses{};
-
-template <class T>
-BALBINO_CONSTEXPR_SINCE_CXX11 auto Allocate(SSharedObjectPool<T>& sharedObjectPool) -> std::shared_ptr<T>
-{
-    if (sharedObjectPool.pool.empty())
+    ~SRenderPassBase() override = default;
+    std::function<void(const PassData*, const SRenderContext&)> renderFunction{};
+    PassData* data{nullptr};
+    void Execute(const SRenderContext& renderContext) override
     {
-        return std::make_shared<T>();
+        if (data && renderFunction)
+        {
+            renderFunction(data, renderContext);
+        }
     }
-    auto obj = sharedObjectPool.pool.back();
-    sharedObjectPool.pool.pop_back();
-    return obj;
-}
+};
 
-template <class T>
-BALBINO_CONSTEXPR_SINCE_CXX11 auto Free(SSharedObjectPool<T>& sharedObjectPool, std::shared_ptr<T> obj)
+export template <class PassData>
+struct SComputePass final : SRenderPassBase<PassData>
 {
-    sharedObjectPool.push_back(obj);
-}
+    ~SComputePass() override = default;
+};
 
-template <class RenderPass>
-BALBINO_CONSTEXPR_SINCE_CXX11 auto Initialize(SRenderPassBase<RenderPass>& renderPass, const bool isComputePass, const int passIndex, const RenderPass& passData)
+export template <class PassData>
+struct SRasterPass final : SRenderPassBase<PassData>
 {
-    renderPass.isCompute = isComputePass;
-    renderPass.index = passIndex;
-    renderPass.data = passData;
-}
+    ~SRasterPass() override = default;
+};
 
-template <class RenderPass>
-BALBINO_CONSTEXPR_SINCE_CXX11 auto Cleanup(SRenderPassBase<RenderPass>& renderPass)
+export template <class PassData>
+struct SRenderPass final : SRenderPassBase<PassData>
 {
-    renderPass.allowGlobalState = false;
-    renderPass.allowPassCulling = true;
-    renderPass.allowRendererListCulling = true;
-    renderPass.enableAsyncCompute = false;
-    renderPass.enableFoveatedRasterization = false;
+    ~SRenderPass() override = default;
+};
 
-    renderPass.index = -1;
-}
-
-template <class RenderPass>
-void Execute(SRenderPassBase<RenderPass>& renderPass)
+export template <class PassData>
+constexpr void Initialize(SRenderPassBase<PassData>* renderPass, bool isComputePass, int passIndex, PassData* passData)
 {
-    renderPass.renderFunction(renderPass.data);
+    renderPass->isCompute = isComputePass;
+    renderPass->index     = passIndex;
+    renderPass->data      = passData;
 }
 
-template <class RenderPass>
-void Release(SRenderPassBase<RenderPass>& renderPass)
+export template <class PassData>
+void Execute(SRenderPassBase<PassData>* renderPass, const SRenderContext& renderContext)
 {
-    g_renderPasses.remove(renderPass);
-    Cleanup(renderPass);
+    if (renderPass && renderPass->renderFunction)
+    {
+        renderPass->renderFunction(renderPass->data, renderContext);
+    }
 }
 
-template <class PassData>
-BALBINO_CONSTEXPR auto AddComputerRenderPass(PassData& passData)
+export template <class PassData>
+void Release(SRenderPassBase<PassData>* renderPass)
 {
-    BALBINO_CONSTEXPR uint32_t rasterPassKey{Balbino::Hash<SRasterPass<PassData>>()};
-    BALBINO_CONSTEXPR uint32_t passKey{Balbino::Hash<SRasterPass<PassData>>()};
-    std::shared_ptr<SComputePass<PassData>> renderPass = Allocate<SRasterPass<PassData>>(g_allocatedPools[rasterPassKey]);
-    Initialize(renderPass, g_renderPasses.size(), Allocate<PassData>(g_allocatedPools[passKey]), false);
-
-    passData = renderPass.data;
-
-    g_renderPasses.emplace_back(renderPass);
-
-    return renderPass;
+    renderPass->allowGlobalState            = false;
+    renderPass->allowPassCulling            = true;
+    renderPass->allowRendererListCulling    = true;
+    renderPass->enableAsyncCompute          = false;
+    renderPass->enableFoveatedRasterization = false;
+    renderPass->index                       = -1;
 }
-
-template <class PassData>
-BALBINO_CONSTEXPR auto AddRasterRenderPass(PassData& passData)
-{
-    BALBINO_CONSTEXPR uint32_t rasterPassKey{Balbino::Hash<SRasterPass<PassData>>()};
-    BALBINO_CONSTEXPR uint32_t passKey{Balbino::Hash<SRasterPass<PassData>>()};
-    std::shared_ptr<SRasterPass<PassData>> renderPass = Allocate<SRasterPass<PassData>>(g_allocatedPools[rasterPassKey]);
-    Initialize(renderPass, g_renderPasses.size(), Allocate<PassData>(g_allocatedPools[passKey]), false);
-
-    passData = renderPass.data;
-
-    g_renderPasses.emplace_back(renderPass);
-
-    return renderPass;
-}
-// todo, allow the rander graph to be used
 } // namespace FawnVision

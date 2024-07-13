@@ -9,6 +9,7 @@ Checks: >
   -cppcoreguidelines-owning-memory
   google-*,
   llvm-*,
+  -llvm-header-guard
   misc-*,
   -misc-include-cleaner,
   -misc-non-private-member-variables-in-classes,
