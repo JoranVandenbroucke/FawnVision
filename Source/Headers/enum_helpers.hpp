@@ -7,7 +7,6 @@
 #include "compiler.hpp"
 
 #include <string_view>
-#include <type_traits>
 
 template <typename>
 struct SIsEnumFlag : std::false_type

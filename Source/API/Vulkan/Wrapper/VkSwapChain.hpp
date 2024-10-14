@@ -5,36 +5,39 @@
 
 #pragma once
 #include "../DeerVulkan_Core.hpp"
+
 #include "VkDevice.hpp"
 #include "VkSemaphore.hpp"
 #include "VkSurface.hpp"
 
+#include <cstddef>
 #include <vector>
 
 namespace DeerVulkan
 {
 struct SSwapChainSupportDetails
 {
-    VkSurfaceCapabilitiesKHR capabilities{};
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
+    VkSurfaceCapabilitiesKHR capabilities{};
 };
 
 struct SVkSwapChain
 {
-    uint32_t currentFrameIdx;
-    VkFormat imageFormat;
+    std::vector<SVkImage> images;
+    std::vector<SVkImageView> imageViews;
+    VkExtent2D extent{};
     VkSwapchainKHR swapchain;
-    VkExtent2D extent;
-    VkClearValue clearValue;
-    VkRenderingAttachmentInfo colorAttachmentInfo;
-    VkRenderingInfo renderingInfo;
-    std::vector<VkImage> images;
-    std::vector<VkImageView> imageViews;
+    VkFormat imageFormat;
+    uint32_t currentFrameIdx;
 };
 
 inline auto ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) noexcept -> VkSurfaceFormatKHR
 {
+    if (formats.empty())
+    {
+        return {VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+    }
     for (const auto& format : formats)
     {
         if (format.format == VK_FORMAT_R8G8B8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
@@ -45,7 +48,7 @@ inline auto ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) 
     return formats[0];
 }
 
-inline auto ChoosePresentMode(const std::vector<VkPresentModeKHR>& presentModes) noexcept -> VkPresentModeKHR
+[[nodiscard]] inline auto ChoosePresentMode(const std::vector<VkPresentModeKHR>& presentModes) noexcept -> VkPresentModeKHR
 {
     for (const auto& presentMode : presentModes)
     {
@@ -71,36 +74,59 @@ inline auto GetExtent(const VkSurfaceCapabilitiesKHR& capabilities, const int32_
     return actualExtent;
 }
 
-inline auto GenerateSupportDetail(const SVkDevice& device, const SVkSurface& surface) -> SSwapChainSupportDetails
+inline auto GenerateSupportDetail(const SVkDevice& device, const SVkSurface& surface) noexcept -> SSwapChainSupportDetails
 {
+    if (device.device == VK_NULL_HANDLE || surface.surface == VK_NULL_HANDLE)
+    {
+        return SSwapChainSupportDetails{};
+    }
     SSwapChainSupportDetails details;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.deviceInfo.device, surface.surface, &details.capabilities);
+    if (!CheckVkResult(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device.deviceInfo.device, surface.surface, &details.capabilities)))
+    {
+        return SSwapChainSupportDetails{};
+    }
 
     uint32_t formatCount{};
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device.deviceInfo.device, surface.surface, &formatCount, VK_NULL_HANDLE);
+    if (!CheckVkResult(vkGetPhysicalDeviceSurfaceFormatsKHR(device.deviceInfo.device, surface.surface, &formatCount, VK_NULL_HANDLE)))
+    {
+        return SSwapChainSupportDetails{};
+    }
     if (formatCount != 0)
     {
         details.formats.resize(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device.deviceInfo.device, surface.surface, &formatCount, details.formats.data());
+        if (!CheckVkResult(vkGetPhysicalDeviceSurfaceFormatsKHR(device.deviceInfo.device, surface.surface, &formatCount, details.formats.data())))
+        {
+            return SSwapChainSupportDetails{};
+        }
     }
 
     uint32_t presentModeCount{};
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device.deviceInfo.device, surface.surface, &presentModeCount, VK_NULL_HANDLE);
+    if (!CheckVkResult(vkGetPhysicalDeviceSurfacePresentModesKHR(device.deviceInfo.device, surface.surface, &presentModeCount, VK_NULL_HANDLE)))
+    {
+        return SSwapChainSupportDetails{};
+    }
     if (presentModeCount != 0)
     {
         details.presentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device.deviceInfo.device, surface.surface, &presentModeCount, details.presentModes.data());
+        if (!CheckVkResult(vkGetPhysicalDeviceSurfacePresentModesKHR(device.deviceInfo.device, surface.surface, &presentModeCount, details.presentModes.data())))
+        {
+            return SSwapChainSupportDetails{};
+        }
     }
 
     return details;
 }
 
-inline auto Initialize(SVkSwapChain& swapChain, const SVkDevice& device, const SVkSurface& surface, const int32_t width, const int32_t height) -> int32_t
+inline auto Initialize(const SVkDevice& device, const SVkSurface& surface, SVkSwapChain& swapChain, const int32_t width, const int32_t height) noexcept -> int32_t
 {
-    const auto& [capabilities, formats, presentModes]{GenerateSupportDetail(device, surface)};
+    if (device.device == VK_NULL_HANDLE || surface.surface == VK_NULL_HANDLE || swapChain.swapchain != VK_NULL_HANDLE || width <= 0 || height <= 0)
+    {
+        return -1;
+    }
+    const auto& [formats, presentModes, capabilities]{GenerateSupportDetail(device, surface)};
     const auto [format, colorSpace]{ChooseSurfaceFormat(formats)};
     const VkPresentModeKHR presentMode{ChoosePresentMode(presentModes)};
-    const VkExtent2D extent{GetExtent(capabilities, width, height)};
+    swapChain.extent = GetExtent(capabilities, width, height);
 
     uint32_t imageCount{capabilities.minImageCount + 1};
     if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
@@ -116,7 +142,7 @@ inline auto Initialize(SVkSwapChain& swapChain, const SVkDevice& device, const S
             .minImageCount         = imageCount,
             .imageFormat           = format,
             .imageColorSpace       = colorSpace,
-            .imageExtent           = extent,
+            .imageExtent           = swapChain.extent,
             .imageArrayLayers      = 1, // 2 for stereo
             .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
@@ -138,90 +164,67 @@ inline auto Initialize(SVkSwapChain& swapChain, const SVkDevice& device, const S
         return -1;
     }
 
+    std::vector<VkImage> images{imageCount};
     swapChain.images.resize(imageCount);
     swapChain.imageViews.resize(imageCount);
-    if (!CheckVkResult(vkGetSwapchainImagesKHR(device.device, swapChain.swapchain, &imageCount, swapChain.images.data())))
+    if (!CheckVkResult(vkGetSwapchainImagesKHR(device.device, swapChain.swapchain, &imageCount, images.data())))
     {
         return -1;
     }
-    for (size_t i = 0; i < swapChain.images.size(); i++)
+    for (std::size_t i{}; i < images.size(); i++)
     {
-        VkImageViewCreateInfo const createInfo{
-                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                .pNext = VK_NULL_HANDLE,
-                .flags = 0,
-                .image = swapChain.images[i],
-                .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                .format = format,
-                .components = {
-                    .r = VK_COMPONENT_SWIZZLE_IDENTITY,
-                    .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-                    .b = VK_COMPONENT_SWIZZLE_IDENTITY,
-                    .a = VK_COMPONENT_SWIZZLE_IDENTITY,
-                },
-                .subresourceRange{
-                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .baseMipLevel = 0,
-                    .levelCount = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1,
-                },
+        swapChain.images[i].image  = images[i];
+        if (const SImageViewCreateInfo imageViewCreateInfo{
+                .imageType   = VK_IMAGE_VIEW_TYPE_2D,
+                .format      = static_cast<uint32_t>(format),
+                .rSwizzle    = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .gSwizzle    = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .bSwizzle    = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .aSwizzle    = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .aspectFlag  = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipOffset   = 0,
+                .mipCount    = 1,
+                .layerOffset = 0,
+                .layerCount  = 1,
             };
-        if (!CheckVkResult(vkCreateImageView(device.device, &createInfo, VK_NULL_HANDLE, &swapChain.imageViews[i])))
+            Initialize(device, swapChain.images[i], swapChain.imageViews[i], imageViewCreateInfo) != 0)
         {
             return -1;
         }
     }
-    swapChain.clearValue = {{{0.7863F, 0.4386F, 0.426F, 1.0F}}};
-
-    swapChain.colorAttachmentInfo = {
-        .sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-        .pNext              = VK_NULL_HANDLE,
-        .imageView          = VK_NULL_HANDLE,
-        .imageLayout        = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
-        .resolveMode        = VK_RESOLVE_MODE_NONE,
-        .resolveImageView   = VK_NULL_HANDLE,
-        .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .loadOp             = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp            = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue         = swapChain.clearValue,
-    };
-
-    swapChain.renderingInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
-        .pNext = VK_NULL_HANDLE,
-        .flags = 0,
-        .renderArea{
-            .offset = {},
-            .extent = extent,
-        },
-        .layerCount           = 1,
-        .viewMask             = 0,
-        .colorAttachmentCount = 1,
-        .pColorAttachments    = &swapChain.colorAttachmentInfo,
-        .pDepthAttachment     = VK_NULL_HANDLE,
-        .pStencilAttachment   = VK_NULL_HANDLE,
-    };
 
     swapChain.imageFormat = format;
-    swapChain.extent      = extent;
     return 0;
 }
-inline void Cleanup(const SVkDevice& device, SVkSwapChain& swapChain)
+inline void Cleanup(const SVkDevice& device, SVkSwapChain& swapChain) noexcept
 {
-    vkDestroySwapchainKHR(device.device, swapChain.swapchain, nullptr);
-    std::ranges::for_each(swapChain.imageViews,
-                          [&vkdevice = device.device](const VkImageView& imageView)
-                          {
-                              vkDestroyImageView(vkdevice, imageView, nullptr);
-                          });
-    swapChain.swapchain = VK_NULL_HANDLE;
-    swapChain.images.clear();
-    swapChain.imageViews.clear();
+    if (device.device == VK_NULL_HANDLE)
+    {
+        return;
+    }
+    if (!swapChain.imageViews.empty())
+    {
+        std::ranges::for_each(swapChain.imageViews,
+                              [&device](SVkImageView& imageView)
+                              {
+                                  Cleanup(device, imageView);
+                              });
+        swapChain.images.clear();
+        swapChain.imageViews.clear();
+    }
+    if (swapChain.swapchain != VK_NULL_HANDLE)
+    {
+        vkDestroySwapchainKHR(device.device, swapChain.swapchain, VK_NULL_HANDLE);
+        swapChain.swapchain = VK_NULL_HANDLE;
+    }
 }
 
-inline auto NextImage(const SVkDevice& device, SVkSwapChain& swapChain, const SVkSemaphore& semaphore) -> int32_t
+inline auto NextImage(const SVkDevice& device, SVkSwapChain& swapChain, const SVkSemaphore& semaphore) noexcept -> int32_t
 {
+    if (device.device == VK_NULL_HANDLE || swapChain.swapchain == VK_NULL_HANDLE || semaphore.semaphore == VK_NULL_HANDLE)
+    {
+        return -1;
+    }
     if (const VkAcquireNextImageInfoKHR acquireNextImageInfo{
             .sType      = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR,
             .pNext      = VK_NULL_HANDLE,
@@ -235,54 +238,26 @@ inline auto NextImage(const SVkDevice& device, SVkSwapChain& swapChain, const SV
     {
         return -1;
     }
-    swapChain.colorAttachmentInfo.imageView = swapChain.imageViews[swapChain.currentFrameIdx];
     return 0;
 }
 
-inline auto GetImageRenderMemory(const SVkSwapChain& swapChain) -> VkImageMemoryBarrier
+constexpr auto CurrentImage(const SVkSwapChain& swapChain) -> const SVkImage&
 {
-    return {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = VK_NULL_HANDLE,
-            .srcAccessMask = 0,
-            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
-            .image = swapChain.images[swapChain.currentFrameIdx],
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        };
+    return swapChain.images[swapChain.currentFrameIdx];
 }
-inline void NextFrame(SVkSwapChain& swapChain)
+constexpr auto CurrentImage(SVkSwapChain& swapChain) -> SVkImage&
 {
-    swapChain.currentFrameIdx = (swapChain.currentFrameIdx + 1) % swapChain.images.size();
+    return swapChain.images[swapChain.currentFrameIdx];
 }
-inline auto GetImagePresentMemory(const SVkSwapChain& swapChain) -> VkImageMemoryBarrier
+constexpr auto CurrentImageView(const SVkSwapChain& swapChain) -> const SVkImageView&
 {
-    return {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = VK_NULL_HANDLE,
-            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            .dstAccessMask = 0,
-            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
-            .image = swapChain.images[swapChain.currentFrameIdx],
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-        };
+    return swapChain.imageViews[swapChain.currentFrameIdx];
+}
+constexpr void NextFrame(SVkSwapChain& swapChain) noexcept
+{
+    if (swapChain.swapchain != VK_NULL_HANDLE)
+    {
+        swapChain.currentFrameIdx = (swapChain.currentFrameIdx + 1) % swapChain.images.size();
+    }
 }
 } // namespace DeerVulkan

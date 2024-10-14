@@ -21,7 +21,7 @@ struct SQueueFamily
     int32_t presentFamily{-1};
 };
 
-constexpr auto IsComplete(const SQueueFamily& queueFamily) noexcept -> bool
+[[nodiscard]] constexpr auto IsComplete(const SQueueFamily& queueFamily) noexcept -> bool
 {
     return queueFamily.graphicsFamily >= 0 && queueFamily.presentFamily >= 0;
 }
@@ -35,7 +35,7 @@ struct SPhysicalDeviceInfo final
     VkPhysicalDevice device{VK_NULL_HANDLE};
 };
 
-constexpr auto GetMaxUsableSampleCount(const SPhysicalDeviceInfo& physicalDevice) noexcept -> VkSampleCountFlagBits
+[[nodiscard]] constexpr auto GetMaxUsableSampleCount(const SPhysicalDeviceInfo& physicalDevice) noexcept -> VkSampleCountFlagBits
 {
     const VkSampleCountFlags counts{physicalDevice.deviceProperties.limits.framebufferColorSampleCounts & physicalDevice.deviceProperties.limits.framebufferDepthSampleCounts};
     if ((counts & VK_SAMPLE_COUNT_64_BIT) != 0U)
@@ -65,35 +65,44 @@ constexpr auto GetMaxUsableSampleCount(const SPhysicalDeviceInfo& physicalDevice
     return VK_SAMPLE_COUNT_1_BIT;
 }
 
-inline auto FindQueueFamily(const SVkSurface& surface, const std::vector<SPhysicalDeviceInfo>& physicalDevices, SQueueFamily& queueFamily)
+inline auto FindQueueFamily(const SVkSurface& surface, const std::vector<SPhysicalDeviceInfo>& physicalDevices, SQueueFamily& queueFamily) noexcept -> int32_t
 {
-    for (const auto& physicalDevice : physicalDevices)
+    if (surface.surface == VK_NULL_HANDLE || physicalDevices.empty())
+    {
+        return -1;
+    }
+    for (const auto& [deviceProperties, deviceMemoryProperties, deviceFeatures, queueFamilyProperties, device] : physicalDevices)
     {
         int32_t index{};
-        for (const auto& queueFamilyProperty : physicalDevice.queueFamilyProperties)
+        SQueueFamily family{};
+        for (const auto& [queueFlags, queueCount, timestampValidBits, minImageTransferGranularity] : queueFamilyProperties)
         {
-            if(queueFamilyProperty.queueCount <= 0)
+            if (queueCount <= 0)
             {
                 continue;
             }
-            const bool supportsGraphics = (queueFamilyProperty.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0U;
-            const bool supportsCompute  = (queueFamilyProperty.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
+            const bool supportsGraphics = (queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0U;
+            const bool supportsCompute  = (queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
 
-            if (const bool hasEnoughSize = queueFamilyProperty.queueCount >= 2; supportsGraphics && supportsCompute && hasEnoughSize)
+            if (const bool hasEnoughSize = queueCount >= 2; supportsGraphics && supportsCompute && hasEnoughSize)
             {
-                queueFamily.graphicsFamily = index;
+                family.graphicsFamily = index;
             }
 
             VkBool32 presentSupport{};
-            vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice.device, index, surface.surface, &presentSupport);
+            if (!CheckVkResult(vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface.surface, &presentSupport)))
+            {
+                return -1;
+            }
 
             if (presentSupport == VK_TRUE)
             {
-                queueFamily.presentFamily = index;
+                family.presentFamily = index;
             }
 
-            if (IsComplete(queueFamily))
+            if (IsComplete(family))
             {
+                queueFamily = family;
                 return 0;
             }
 
@@ -106,18 +115,34 @@ inline auto FindQueueFamily(const SVkSurface& surface, const std::vector<SPhysic
 template <std::size_t N>
 auto InitializePhysicalDeviceInfos(const SVkInstance& instance, const std::array<const char*, N>& physicalDeviceExtensions, std::vector<SPhysicalDeviceInfo>& physicalDevices) noexcept -> int32_t
 {
+    if (instance.instance == VK_NULL_HANDLE)
+    {
+        return -1;
+    }
     uint32_t deviceCount{};
-    vkEnumeratePhysicalDevices(instance.instance, &deviceCount, VK_NULL_HANDLE);
+    if (!CheckVkResult(vkEnumeratePhysicalDevices(instance.instance, &deviceCount, VK_NULL_HANDLE)))
+    {
+        return -1;
+    }
     std::vector<VkPhysicalDevice> devices(deviceCount, VK_NULL_HANDLE);
-    vkEnumeratePhysicalDevices(instance.instance, &deviceCount, devices.data());
+    if (!CheckVkResult(vkEnumeratePhysicalDevices(instance.instance, &deviceCount, devices.data())))
+    {
+        return -1;
+    }
 
     physicalDevices.reserve(deviceCount);
     for (const auto& device : devices)
     {
         uint32_t extensionCount{};
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+        if (!CheckVkResult(vkEnumerateDeviceExtensionProperties(device, VK_NULL_HANDLE, &extensionCount, VK_NULL_HANDLE)))
+        {
+            return -1;
+        }
         std::vector<VkExtensionProperties> extensions(extensionCount);
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, extensions.data());
+        if (!CheckVkResult(vkEnumerateDeviceExtensionProperties(device, VK_NULL_HANDLE, &extensionCount, extensions.data())))
+        {
+            return -1;
+        }
 
         std::set<std::string, std::less<>> requiredExtensions(physicalDeviceExtensions.begin(), physicalDeviceExtensions.end());
         for (const auto& [extensionName, specVersion] : extensions)
@@ -131,7 +156,7 @@ auto InitializePhysicalDeviceInfos(const SVkInstance& instance, const std::array
         }
 
         uint32_t queueFamilyCount{};
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, VK_NULL_HANDLE);
         std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 

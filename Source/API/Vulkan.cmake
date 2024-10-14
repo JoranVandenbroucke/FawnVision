@@ -1,10 +1,15 @@
 set(VULKAN_API_FILES
+        Vulkan/Wrapper/VkBuffer.hpp
         Vulkan/Wrapper/VkCommand.hpp
+        Vulkan/Wrapper/VkDescriptor.hpp
         Vulkan/Wrapper/VkDevice.hpp
         Vulkan/Wrapper/VkFence.hpp
         Vulkan/Wrapper/VkInstance.hpp
+        Vulkan/Wrapper/VkImage.hpp
+        Vulkan/Wrapper/VkImageView.hpp
         Vulkan/Wrapper/VkPhysicalDevice.hpp
         Vulkan/Wrapper/VkQueue.hpp
+        Vulkan/Wrapper/VkSampler.hpp
         Vulkan/Wrapper/VkSemaphore.hpp
         Vulkan/Wrapper/VkShader.hpp
         Vulkan/Wrapper/VkSurface.hpp

@@ -88,8 +88,6 @@
 #    define BALBINO_CONSTEXPR_SINCE_CXX23 constexpr
 #endif
 
-#define BALBINO_DEBUG _DEBUG
-
 #if BALBINO_COMPILER_ACTIVE == BALBINO_COMPILER_CLANG || BALBINO_COMPILER_ACTIVE == BALBINO_COMPILER_GNU
 #    define BALBINO_LIKELY(expr) __builtin_expect(!!(expr), 1)
 #    define BALBINO_UNLIKELY(expr) __builtin_expect(!!(expr), 0)
@@ -97,3 +95,25 @@
 #    define BALBINO_LIKELY(expr) (expr)
 #    define BALBINO_UNLIKELY(expr) (expr)
 #endif
+
+#if defined(__has_include)
+#if !defined(BALBINO_EMBED_HAS_INCLUDE)
+#define BALBINO_EMBED_HAS_INCLUDE(HEADER_TOKEN) __has_include(HEADER_TOKEN)
+#endif // undefined BALBINO_EMBED_HAS_INCLUDE
+#endif // __has_include ability
+
+#if defined(BALBINO_EMBED_HAS_INCLUDE) && (BALBINO_EMBED_HAS_INCLUDE(<version>))
+#include <version>
+#endif
+
+#if !defined(BALBINO_EMBED_HAS_BUILTIN_EMBED)
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_embed)
+#define  BALBINO_EMBED_HAS_BUILTIN_EMBED 1
+#else
+#define  BALBINO_EMBED_HAS_BUILTIN_EMBED 0
+#endif
+#else
+#define  BALBINO_EMBED_HAS_BUILTIN_EMBED 0
+#endif // __has_builtin test
+#endif // undefined BALBINO_EMBED_HAS_BUILTIN_EMBED

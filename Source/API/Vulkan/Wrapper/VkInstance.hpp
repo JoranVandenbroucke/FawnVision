@@ -16,66 +16,76 @@ namespace DeerVulkan
 struct SVkInstance
 {
     VkInstance instance{VK_NULL_HANDLE};
-#ifdef _DEBUG
-    VkDebugReportCallbackEXT debugMessenger{VK_NULL_HANDLE};
+#ifdef BALBINO_DEBUG
+    VkDebugUtilsMessengerEXT debugMessenger{VK_NULL_HANDLE};
 #endif
 };
 
-#ifdef _DEBUG
-static auto VKAPI_CALL DebugReport(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT /*unused*/, uint64_t /*unused*/, std::size_t /*unused*/, int32_t messageCode, const char* pLayerPrefix, const char* pMessage,
-                                   void* /*unused*/) noexcept -> VkBool32
+#ifdef BALBINO_DEBUG
+VKAPI_ATTR inline VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSevirity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*)
 {
-    auto debugType = "UNKNOWN";
-    if ((flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) != 0U)
+    std::string_view type{};
+    switch (messageType)
     {
-        debugType = "ERROR";
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT: type = "General"; break;
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT : type = "Validation"; break;
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT : type = "Performance"; break;
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT: type = "Device Address Binding"; break;
+    default: break;
     }
-    else if ((flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) != 0U)
+    switch (messageSevirity)
     {
-        debugType = "WARNING";
-    }
-    else if ((flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) != 0U)
-    {
-        debugType = "INFO";
-    }
-    else if ((flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) != 0U)
-    {
-        debugType = "PERFORMANCE WARNING";
-    }
-    else if ((flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) != 0U)
-    {
-        debugType = "DEBUG";
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+    std::cout << type << " Verbose: "<< pCallbackData->pMessage << std::endl;
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+    std::cout << type << " Info: "<< pCallbackData->pMessage << std::endl;
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+    std::clog << type << " Warning: "<< pCallbackData->pMessage << std::endl;
+        break;
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+    std::cerr << type << " Error: "<< pCallbackData->pMessage << std::endl;
+        break;
+    default: break;
     }
 
-    std::cout << std::format("[Vulkan DebugLayer, {}, {}, {}]: {}", debugType, pLayerPrefix, messageCode, pMessage) << '\n';
-    std::cout.flush();
     return VK_FALSE;
 }
-inline auto InitializeDebugLayerCallback(SVkInstance& instance) -> VkResult
+
+inline auto InitializeDebugLayerCallback(SVkInstance& instance) noexcept -> int32_t
 {
-    if (const auto pCreateCallback = std::bit_cast<PFN_vkCreateDebugReportCallbackEXT>(vkGetInstanceProcAddr(instance.instance, "vkCreateDebugReportCallbackEXT")))
+    if (instance.instance == VK_NULL_HANDLE)
     {
-        constexpr VkDebugReportCallbackCreateInfoEXT debugReportCi{
-            .sType       = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
-            .pNext       = nullptr,
-            .flags       = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
-            .pfnCallback = DebugReport,
-            .pUserData   = nullptr,
-        };
-        if (pCreateCallback(instance.instance, &debugReportCi, nullptr, &instance.debugMessenger) == VK_SUCCESS)
-        {
-            return VK_SUCCESS;
-        }
+        return -1;
     }
-    return VK_ERROR_INITIALIZATION_FAILED;
+    constexpr VkDebugUtilsMessengerCreateInfoEXT createInfo{
+        .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        .pNext           = VK_NULL_HANDLE,
+        .flags           = 0,
+        .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+        .messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
+        .pfnUserCallback = DebugCallback,
+        .pUserData       = nullptr,
+    };
+    if (const auto pCreateCallback = std::bit_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance.instance, "vkCreateDebugUtilsMessengerEXT"));
+        pCreateCallback == VK_NULL_HANDLE || instance.debugMessenger != VK_NULL_HANDLE || !CheckVkResult(pCreateCallback(instance.instance, &createInfo, VK_NULL_HANDLE, &instance.debugMessenger)))
+    {
+        return -1;
+    }
+    return 0;
 }
 #endif
 
-inline auto InitializeInstance(SVkInstance& instance, const char* pAppName, const uint32_t appVersion, const char* const* pExtensions, const uint32_t extensionsCount) noexcept -> VkResult
+inline auto InitializeInstance(SVkInstance& instance, const std::string_view appName, const uint32_t appVersion, const char* const* const pExtensions, const uint32_t extensionsCount) noexcept -> int32_t
 {
-#ifdef _DEBUG
+    if (instance.instance != VK_NULL_HANDLE)
+    {
+        return -1;
+    }
+#ifdef BALBINO_DEBUG
     constexpr std::array layers{"VK_LAYER_KHRONOS_validation"};
-    std::vector extensions{VK_KHR_SURFACE_EXTENSION_NAME, "VK_EXT_debug_report"};
+    std::vector extensions{VK_KHR_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
 #else
     constexpr std::array<const char*, 0> layers;
     std::vector extensions{VK_KHR_SURFACE_EXTENSION_NAME};
@@ -83,7 +93,7 @@ inline auto InitializeInstance(SVkInstance& instance, const char* pAppName, cons
     for (uint32_t i{}; i < extensionsCount; ++i)
     {
         if (const char* const pExt{pExtensions[i]}; std::ranges::find_if(extensions,
-                                                                         [pExt](const char* pExtension)
+                                                                         [pExt](const char* const pExtension)
                                                                          {
                                                                              return std::strcmp(pExt, pExtension) == 0;
                                                                          })
@@ -96,7 +106,7 @@ inline auto InitializeInstance(SVkInstance& instance, const char* pAppName, cons
     const VkApplicationInfo applicationInfo{
         .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext              = VK_NULL_HANDLE,
-        .pApplicationName   = pAppName,
+        .pApplicationName   = appName.data(),
         .applicationVersion = appVersion,
         .pEngineName        = "Balbino",
         .engineVersion      = VK_MAKE_VERSION(0, 2, 0),
@@ -119,18 +129,17 @@ inline auto InitializeInstance(SVkInstance& instance, const char* pAppName, cons
         createInfo.ppEnabledLayerNames = VK_NULL_HANDLE;
         result                         = vkCreateInstance(&createInfo, VK_NULL_HANDLE, &instance.instance);
     }
-    return result;
+    return result == VK_SUCCESS ? 0 : -1;
 }
 
-
-inline auto InitialzieInstance(SVkInstance& instance) -> int32_t
+inline auto Initialize(SVkInstance& instance) noexcept -> int32_t
 {
     uint32_t extensionCount{};
-    if (char const* const* pExtensions{SDL_Vulkan_GetInstanceExtensions(&extensionCount)}; InitializeInstance(instance, "Deer", VK_MAKE_VERSION(0, 0, 0), pExtensions, extensionCount) != 0)
+    if (const char* const* const pExtensions{SDL_Vulkan_GetInstanceExtensions(&extensionCount)}; InitializeInstance(instance, "Deer", VK_MAKE_VERSION(0, 0, 0), pExtensions, extensionCount) != 0)
     {
         return -1;
     }
-#ifdef _DEBUG
+#ifdef BALBINO_DEBUG
     if (InitializeDebugLayerCallback(instance) != 0)
     {
         return -1;
@@ -139,18 +148,22 @@ inline auto InitialzieInstance(SVkInstance& instance) -> int32_t
     return 0;
 }
 
-inline void Cleanup(SVkInstance& instance)
+inline void Cleanup(SVkInstance& instance) noexcept
 {
-#ifdef _DEBUG
-    if (instance.debugMessenger != nullptr)
+#ifdef BALBINO_DEBUG
+    if (instance.debugMessenger != VK_NULL_HANDLE)
     {
-        if (const auto pDestroyCallback{std::bit_cast<PFN_vkDestroyDebugReportCallbackEXT>(vkGetInstanceProcAddr(instance.instance, "vkDestroyDebugReportCallbackEXT"))})
+        if (const auto pDestroyCallback{std::bit_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance.instance, "vkDestroyDebugUtilsMessengerEXT"))})
         {
-            pDestroyCallback(instance.instance, instance.debugMessenger, nullptr);
+            pDestroyCallback(instance.instance, instance.debugMessenger, VK_NULL_HANDLE);
+            instance.debugMessenger = VK_NULL_HANDLE;
         }
     }
 #endif
-    vkDestroyInstance(instance.instance, nullptr);
-    instance.instance = VK_NULL_HANDLE;
+    if (instance.instance != VK_NULL_HANDLE)
+    {
+        vkDestroyInstance(instance.instance, VK_NULL_HANDLE);
+        instance.instance = VK_NULL_HANDLE;
+    }
 }
 } // namespace DeerVulkan

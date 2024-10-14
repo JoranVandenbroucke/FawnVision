@@ -4,34 +4,105 @@
 //
 
 module;
+#include <bit>
 
-#include "compiler.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include <bit>
-#include <cstdint>
+#include "compiler.hpp"
 
+#include <type_traits>
 export module FawnVision.Window;
-
-import FawnVision.WindowConstants;
-import FawnVision.WindowTypes;
+import FawnAlgebra.Arithmetics;
+using namespace FawnAlgebra;
 
 namespace FawnVision
 {
-export inline auto InitializeSDL() -> int32_t
+#pragma region defenition
+export struct SWindowCreateInfo;
+export struct SWindow;
+
+export enum class window_flags : uint32;
+
+export constexpr window_flags operator|(window_flags lhs, window_flags rhs) noexcept;
+
+export inline auto InitializeSDL() noexcept -> int32;
+
+export inline auto CreateWindow(const SWindowCreateInfo& createInfo, SWindow& window) noexcept -> int32;
+export inline void ReleaseWindow(const SWindow& window) noexcept;
+
+export inline auto SetWindowFlags(SWindow& window, uint32 flags) noexcept -> int32;
+export inline auto ToggleWindowFlags(SWindow& window, uint32 flags) noexcept -> int32;
+export inline auto SetWindowPosition(const SWindow& window, int xPosition = SDL_WINDOWPOS_CENTERED, int yPosition = SDL_WINDOWPOS_CENTERED) noexcept -> int32;
+export inline auto GetWindowPosition(const SWindow& window, int& xPosition, int& yPosition) noexcept -> int32;
+export inline auto SetWindowSize(SWindow& window, int width, int height) noexcept -> int32;
+export inline auto GetWindowSize(SWindow& window) noexcept -> int32;
+export constexpr auto GetWindowSize(const SWindow& window, int& width, int& height) noexcept -> int32;
+#pragma endregion
+
+#pragma region implementation
+struct SWindowCreateInfo
 {
-    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS | SDL_INIT_SENSOR) != 0)
+    const char8_t* const name{};
+    uint8 screen{0};
+    int32 width{0};
+    int32 height{0};
+    uint32 flags{0};
+};
+struct SWindow
+{
+    SDL_Window* pWindow{nullptr};
+    int32 width{0};
+    int32 height{0};
+    uint32 flags{0};
+    uint32 extensionCount{0};
+    char const* const* extensions{nullptr};
+};
+
+enum class window_flags : uint32
+{
+    fullscreen         = 0x00000001U,
+    openGL             = 0x00000002U,
+    occluded           = 0x00000004U,
+    hidden             = 0x00000008U,
+    borderless         = 0x00000010U,
+    resizable          = 0x00000020U,
+    minimized          = 0x00000040U,
+    maximized          = 0x00000080U,
+    mouse_grabbed      = 0x00000100U,
+    input_focus        = 0x00000200U,
+    mouse_focus        = 0x00000400U,
+    external           = 0x00000800U,
+    high_pixel_density = 0x00002000U,
+    mouseCapture       = 0x00004000U,
+    always_on_top      = 0x00008000U,
+    utility            = 0x00020000U,
+    tooltip            = 0x00040000U,
+    popup_menu         = 0x00080000U,
+    keyboard_grabbed   = 0x00100000U,
+    vulkan             = 0x10000000U,
+    metal              = 0x20000000U,
+    transparent        = 0x40000000U,
+    not_focusable      = 0x80000000U,
+};
+
+BALBINO_CONSTEXPR_SINCE_CXX17 auto operator|(const window_flags lhs, const window_flags rhs) noexcept -> window_flags
+{
+    using UnderlyingType = std::underlying_type_t<window_flags>;
+    return static_cast<window_flags>(static_cast<UnderlyingType>(lhs) | static_cast<UnderlyingType>(rhs));
+}
+inline auto InitializeSDL() noexcept -> int32
+{
+    if (!SDL_Init(SDL_INIT_VIDEO))
     {
         return -1;
     }
     return 0;
 }
-
-export inline auto CreateWindow(const SWindowCreateInfo& createInfo, SWindow& window) noexcept -> int32_t
+inline auto CreateWindow(const SWindowCreateInfo& createInfo, SWindow& window) noexcept -> int32
 {
     int screenCount{};
-    const SDL_DisplayID* pDisplayList{SDL_GetDisplays(&screenCount)};
+    const SDL_DisplayID* const pDisplayList{SDL_GetDisplays(&screenCount)};
     const SDL_DisplayMode* pCurrent{nullptr};
 
     if (createInfo.screen == 0)
@@ -59,7 +130,7 @@ export inline auto CreateWindow(const SWindowCreateInfo& createInfo, SWindow& wi
         return -1;
     }
 
-    SDL_Window* pWindow{SDL_CreateWindow(std::bit_cast<const char*>(createInfo.name), createInfo.width, createInfo.height, createInfo.flags)};
+    SDL_Window* const pWindow{SDL_CreateWindow(std::bit_cast<const char*>(createInfo.name), createInfo.width, createInfo.height, createInfo.flags)};
     if (pWindow == nullptr)
     {
         return -1;
@@ -74,26 +145,24 @@ export inline auto CreateWindow(const SWindowCreateInfo& createInfo, SWindow& wi
 
     return 0;
 }
-
-export inline void ReleaseWindow(const SWindow& window) noexcept
+inline void ReleaseWindow(const SWindow& window) noexcept
 {
     SDL_DestroyWindow(window.pWindow);
 }
-
-export inline auto SetWindowFlags(SWindow& window, const uint32_t flags) noexcept -> int32_t
+inline auto SetWindowFlags(SWindow& window, const uint32 flags) noexcept -> int32
 {
-    if (SDL_SetWindowBordered(window.pWindow, (flags & SDL_WINDOW_BORDERLESS) != 0U ? SDL_FALSE : SDL_TRUE) != 0 || SDL_SetWindowResizable(window.pWindow, (flags & SDL_WINDOW_RESIZABLE) != 0U ? SDL_TRUE : SDL_FALSE) != 0
-        || SDL_SetWindowFullscreen(window.pWindow, (flags & SDL_WINDOW_FULLSCREEN) != 0U ? SDL_TRUE : SDL_FALSE) != 0 || SDL_SetWindowFocusable(window.pWindow, (flags & SDL_WINDOW_NOT_FOCUSABLE) != 0U ? SDL_FALSE : SDL_TRUE) != 0)
+    if (!SDL_SetWindowBordered(window.pWindow, !(flags & SDL_WINDOW_BORDERLESS)) || !SDL_SetWindowResizable(window.pWindow, flags & SDL_WINDOW_RESIZABLE)
+        || !SDL_SetWindowFullscreen(window.pWindow, flags & SDL_WINDOW_FULLSCREEN) || !SDL_SetWindowFocusable(window.pWindow, !(flags & SDL_WINDOW_NOT_FOCUSABLE)))
     {
         return -1;
     }
 
-    if ((flags & SDL_WINDOW_MAXIMIZED) != 0U && SDL_MaximizeWindow(window.pWindow) != 0)
+    if ((flags & SDL_WINDOW_MAXIMIZED) != 0U && !SDL_MaximizeWindow(window.pWindow))
     {
         return -1;
     }
 
-    if ((flags & SDL_WINDOW_MINIMIZED) != 0U && SDL_MinimizeWindow(window.pWindow) != 0)
+    if ((flags & SDL_WINDOW_MINIMIZED) != 0U && !SDL_MinimizeWindow(window.pWindow))
     {
         return -1;
     }
@@ -101,13 +170,21 @@ export inline auto SetWindowFlags(SWindow& window, const uint32_t flags) noexcep
     window.flags = flags;
     return 0;
 }
-
-export inline auto ToggleWindowFlags(SWindow& window, const uint32_t flags) noexcept -> int32_t
+inline auto ToggleWindowFlags(SWindow& window, const uint32 flags) noexcept -> int32
 {
     return SetWindowFlags(window, window.flags ^ flags);
 }
-
-export inline auto SetWindowSize(SWindow& window, const int width, const int height) noexcept -> int32_t
+inline auto SetWindowPosition(const SWindow& window, const int xPosition, const int yPosition) noexcept -> int32
+{
+    SDL_SetWindowPosition(window.pWindow, xPosition, yPosition);
+    return 0;
+}
+inline auto GetWindowPosition(const SWindow& window, int& xPosition, int& yPosition) noexcept -> int32
+{
+    SDL_GetWindowPosition(window.pWindow, &xPosition, &yPosition);
+    return 0;
+}
+inline auto SetWindowSize(SWindow& window, const int width, const int height) noexcept -> int32
 {
     window.width  = width;
     window.height = height;
@@ -115,29 +192,16 @@ export inline auto SetWindowSize(SWindow& window, const int width, const int hei
     SDL_SetWindowPosition(window.pWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     return 0;
 }
-
-export BALBINO_CONSTEXPR_SINCE_CXX11 auto GetWindowSize(const SWindow& window, int& width, int& height) noexcept -> int32_t
+inline auto GetWindowSize(SWindow& window) noexcept -> int32
+{
+    SDL_GetWindowSize(window.pWindow, &window.width, &window.height);
+    return 0;
+}
+BALBINO_CONSTEXPR_SINCE_CXX11 auto GetWindowSize(const SWindow& window, int& width, int& height) noexcept -> int32
 {
     width  = window.width;
     height = window.height;
     return 0;
 }
-
-export BALBINO_CONSTEXPR_SINCE_CXX11 auto GetWindowSize(SWindow& window) noexcept -> int32_t
-{
-    SDL_GetWindowSize(window.pWindow, &window.width, &window.height);
-    return 0;
-}
-
-export inline auto SetWindowPosition(const SWindow& window, const int xPosition = SDL_WINDOWPOS_CENTERED, const int yPosition = SDL_WINDOWPOS_CENTERED) noexcept -> int32_t
-{
-    SDL_SetWindowPosition(window.pWindow, xPosition, yPosition);
-    return 0;
-}
-
-export inline auto GetWindowPosition(const SWindow& window, int& xPosition, int& yPosition) noexcept -> int32_t
-{
-    SDL_GetWindowPosition(window.pWindow, &xPosition, &yPosition);
-    return 0;
-}
+#pragma endregion
 } // namespace FawnVision

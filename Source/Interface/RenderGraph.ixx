@@ -6,293 +6,281 @@
 module;
 #include "API/Vulkan/DeerVulkan.hpp"
 
+#include <cstddef>
 #include <functional>
-#include <list>
+#include <vector>
 
 export module FawnVision.RenderGraph;
-import FawnVision.SharedObjectPool;
-import FawnVision.RendererTypes;
+import FawnAlgebra.Arithmetics;
+import FawnVision.Enum;
+import FawnVision.Texture;
+import FawnVision.Renderer;
 import FawnVision.RenderPass;
-import FawnVision.Shader;
+import FawnVision.RenderPassContext;
+using namespace FawnAlgebra;
 
 namespace FawnVision
 {
-export enum class compare_operator : uint8_t {
-    never            = 0,
-    less             = 1,
-    equal            = 2,
-    less_or_equal    = 3,
-    greater          = 4,
-    not_equal        = 5,
-    greater_or_equal = 6,
-    always           = 7,
-};
-export enum class cull_mode : uint8_t {
-    none           = 0,
-    front          = 1,
-    back           = 2,
-    front_and_back = 3,
-};
-export enum class primitive_topology : uint8_t {
-    point_list                    = 0,
-    line_list                     = 1,
-    line_strip                    = 2,
-    triangle_list                 = 3,
-    triangle_strip                = 4,
-    triangle_fan                  = 5,
-    line_list_with_adjacency      = 6,
-    line_strip_with_adjacency     = 7,
-    triangle_list_with_adjacency  = 8,
-    triangle_strip_with_adjacency = 9,
-    patch_list                    = 10,
-};
-export enum class polygon_mode : uint8_t {
-    fill  = 0,
-    line  = 1,
-    point = 2,
-};
-export enum class color_component : uint8_t {
-    r_bit = 0x01,
-    g_bit = 0x02,
-    b_bit = 0x04,
-    a_bit = 0x08,
-};
+#pragma region defenition
+export struct SRenderGraph;
+export struct IRenderPassHandle;
+export template <class PassData>
+void SetRenderFunc(SRenderGraph& renderGraph, IRenderPassHandle& handle, std::function<void(const PassData*, const SRenderPassContext&)>&& renderFunc) noexcept;
+export template <class PassData>
+constexpr IRenderPassHandle AddComputeRenderPass(SRenderGraph& renderGraph, PassData*& passData) noexcept;
+export template <class PassData>
+constexpr IRenderPassHandle AddRasterRenderPass(SRenderGraph& renderGraph, PassData*& passData) noexcept;
+export constexpr void EnableRenderPass(SRenderGraph& renderGraph, const IRenderPassHandle& handle) noexcept;
+export constexpr void DisableRenderPass(SRenderGraph& renderGraph, const IRenderPassHandle& handle) noexcept;
+export constexpr void SetRenderTarget(SRenderGraph& renderGraph, const IRenderPassHandle& handle, STexture& color, STexture& depth) noexcept;
+export constexpr void SetRenderColorTarget(SRenderGraph& renderGraph, const IRenderPassHandle& handle, STexture& color) noexcept;
+export constexpr void SetRenderDepthTarget(SRenderGraph& renderGraph, const IRenderPassHandle& handle, STexture& depth) noexcept;
+export constexpr void ExecuteAll(SRenderer& renderer, SRenderGraph& renderGraph) noexcept;
+export constexpr void CleanupRenderGraph(SRenderGraph& renderGraph) noexcept;
 
-export enum class blend_factor : uint32_t {
-    zero                     = 0,
-    one                      = 1,
-    src_color                = 2,
-    one_minus_src_color      = 3,
-    dst_color                = 4,
-    one_minus_dst_color      = 5,
-    src_alpha                = 6,
-    one_minus_src_alpha      = 7,
-    dst_alpha                = 8,
-    one_minus_dst_alpha      = 9,
-    constant_color           = 10,
-    one_minus_constant_color = 11,
-    constant_alpha           = 12,
-    one_minus_constant_alpha = 13,
-    src_alpha_saturate       = 14,
-    src1_color               = 15,
-    one_minus_src1_color     = 16,
-    src1_alpha               = 17,
-    one_minus_src1_alpha     = 18,
-    max_enum                 = 0x7FFFFFFF
-};
+constexpr void PreRenderPass(const SRenderPassContext& renderPassContext, const SRenderPassBase* renderPass) noexcept;
+inline void PostRenderPass(const SRenderPassContext& renderPassContext, const SRenderPassBase* renderPass) noexcept;
+#pragma endregion
 
-export enum class blend_operator : uint32_t {
-    add                    = 0,
-    subtract               = 1,
-    reverse_subtract       = 2,
-    min                    = 3,
-    max                    = 4,
-    zero_ext               = 1000148000,
-    src_ext                = 1000148001,
-    dst_ext                = 1000148002,
-    src_over_ext           = 1000148003,
-    dst_over_ext           = 1000148004,
-    src_in_ext             = 1000148005,
-    dst_in_ext             = 1000148006,
-    src_out_ext            = 1000148007,
-    dst_out_ext            = 1000148008,
-    src_atop_ext           = 1000148009,
-    dst_atop_ext           = 1000148010,
-    xor_ext                = 1000148011,
-    multiply_ext           = 1000148012,
-    screen_ext             = 1000148013,
-    overlay_ext            = 1000148014,
-    darken_ext             = 1000148015,
-    lighten_ext            = 1000148016,
-    colordodge_ext         = 1000148017,
-    colorburn_ext          = 1000148018,
-    hardlight_ext          = 1000148019,
-    softlight_ext          = 1000148020,
-    difference_ext         = 1000148021,
-    exclusion_ext          = 1000148022,
-    invert_ext             = 1000148023,
-    invert_rgb_ext         = 1000148024,
-    lineardodge_ext        = 1000148025,
-    linearburn_ext         = 1000148026,
-    vividlight_ext         = 1000148027,
-    linearlight_ext        = 1000148028,
-    pinlight_ext           = 1000148029,
-    hardmix_ext            = 1000148030,
-    hsl_hue_ext            = 1000148031,
-    hsl_saturation_ext     = 1000148032,
-    hsl_color_ext          = 1000148033,
-    hsl_luminosity_ext     = 1000148034,
-    plus_ext               = 1000148035,
-    plus_clamped_ext       = 1000148036,
-    plus_clamped_alpha_ext = 1000148037,
-    plus_darker_ext        = 1000148038,
-    minus_ext              = 1000148039,
-    minus_clamped_ext      = 1000148040,
-    contrast_ext           = 1000148041,
-    invert_ovg_ext         = 1000148042,
-    red_ext                = 1000148043,
-    green_ext              = 1000148044,
-    blue_ext               = 1000148045,
+#pragma region implementation
+struct SRenderGraph
+{
+    std::vector<SRenderPassBase*> renderPasses;
+    std::vector<SRenderPassBase*> compiledRenderPasses;
+    bool dirty{};
 };
-
-export struct IRenderGraphBuilder
+struct IRenderPassHandle
 {
     const DeerVulkan::SVkCommandBuffer* commandBuffer{nullptr};
-    const SRenderPassCore* currentRenderPass{nullptr};
-};
-export struct SRenderGraph
-{
-    RenderGraphObjectPool renderGraphObjectPool;
-    std::list<SRenderPassCore*> renderPasses;
+    std::size_t renderPassIdx;
 };
 
-export void FromInternalContext(IRenderGraphBuilder& renderGraphBuilder, const DeerVulkan::SVkCommandBuffer& commandBuffer, const SRenderPassCore& currentRenderPass)
+template <class PassData>
+void SetRenderFunc(SRenderGraph& renderGraph, IRenderPassHandle& handle, std::function<void(const PassData*, const SRenderPassContext&)>&& renderFunc) noexcept
 {
-    renderGraphBuilder.commandBuffer     = &commandBuffer;
-    renderGraphBuilder.currentRenderPass = &currentRenderPass;
+    SRenderPass<PassData>* renderPass = std::bit_cast<SRenderPass<PassData>*>(renderGraph.renderPasses[handle.renderPassIdx]);
+    renderPass->renderFunction.swap(renderFunc);
 }
 
-export inline void SetViewport(const SRenderContext& renderGraphBuilder, const float xPos, const float yPos, const float width, const float height, const float minDepth = 0.0f, const float maxDepth = 1.0f)
+template <class PassData>
+constexpr IRenderPassHandle AddComputeRenderPass(SRenderGraph& renderGraph, PassData*& passData) noexcept
 {
-    DeerVulkan::SetViewport(renderGraphBuilder.commandBuffer, xPos, yPos, width, height, minDepth, maxDepth);
-}
-export inline void SetScissor(const SRenderContext& renderGraphBuilder, const uint32_t width, const uint32_t height, const uint32_t xPos, const uint32_t yPos)
-{
-    DeerVulkan::SetScissor(renderGraphBuilder.commandBuffer, width, height, xPos, yPos);
-}
-export inline void SetAlphaToCoverageEnable(const SRenderContext& renderGraphBuilder, const bool enable)
-{
-    DeerVulkan::SetAlphaToCoverageEnable(renderGraphBuilder.commandBuffer, enable);
-}
-export inline void SetColorBlendEnable(const SRenderContext& renderGraphBuilder, const bool enable)
-{
-    DeerVulkan::SetColorBlendEnable(renderGraphBuilder.commandBuffer, enable);
-}
-export inline void SetColorBlendEquation(const SRenderContext& renderGraphBuilder, const blend_factor srcColorBlendFactor, blend_factor dstColorBlendFactor, blend_operator colorBlendOp, blend_factor srcAlphaBlendFactor,
-                                         blend_factor dstAlphaBlendFactor, blend_operator alphaBlendOp)
-{
-    DeerVulkan::SetColorBlendEquation(renderGraphBuilder.commandBuffer, static_cast<uint32_t>(srcColorBlendFactor), static_cast<uint32_t>(dstColorBlendFactor), static_cast<uint32_t>(colorBlendOp), static_cast<uint32_t>(srcAlphaBlendFactor),
-                                      static_cast<uint32_t>(dstAlphaBlendFactor), static_cast<uint32_t>(alphaBlendOp));
-}
-export inline void SetColorWriteMask(const SRenderContext& renderGraphBuilder, const color_component mask)
-{
-    DeerVulkan::SetColorWriteMask(renderGraphBuilder.commandBuffer, static_cast<uint32_t>(mask));
-}
-export inline void SetCullMode(const SRenderContext& renderGraphBuilder, const cull_mode cullMode)
-{
-    DeerVulkan::SetCullMode(renderGraphBuilder.commandBuffer, static_cast<uint8_t>(cullMode));
-}
-export inline void SetDepthBiasEnable(const SRenderContext& renderGraphBuilder, const bool enable)
-{
-    DeerVulkan::SetDepthBiasEnable(renderGraphBuilder.commandBuffer, enable);
-}
-export inline void SetDepthCompareOperator(const SRenderContext& renderGraphBuilder, const compare_operator depthOperator)
-{
-    DeerVulkan::SetDepthCompareOperator(renderGraphBuilder.commandBuffer, static_cast<uint8_t>(depthOperator));
-}
-export inline void SetDepthTestEnable(const SRenderContext& renderGraphBuilder, const bool enable)
-{
-    DeerVulkan::SetDepthTestEnable(renderGraphBuilder.commandBuffer, enable);
-}
-export inline void SetDepthWriteEnable(const SRenderContext& renderGraphBuilder, const bool enable)
-{
-    DeerVulkan::SetDepthWriteEnable(renderGraphBuilder.commandBuffer, enable);
-}
-export inline void SetFrontFace(const SRenderContext& renderGraphBuilder, const bool isClockWice)
-{
-    DeerVulkan::SetFrontFace(renderGraphBuilder.commandBuffer, isClockWice);
-}
-export inline void SetLineWidth(const SRenderContext& renderGraphBuilder, const float isClockWice)
-{
-    DeerVulkan::SetLineWidth(renderGraphBuilder.commandBuffer, isClockWice);
-}
-export inline void SetPolygonMode(const SRenderContext& renderGraphBuilder, const polygon_mode mode)
-{
-    DeerVulkan::SetPolygonMode(renderGraphBuilder.commandBuffer, static_cast<uint32_t>(mode));
-}
-export inline void SetPrimitiveRestartEnable(const SRenderContext& renderGraphBuilder, const bool enable)
-{
-    SetPrimitiveRestartEnable(renderGraphBuilder.commandBuffer, enable);
-}
-export inline void SetPrimitiveTopology(const SRenderContext& renderGraphBuilder, const primitive_topology topology)
-{
-    DeerVulkan::SetPrimitiveTopology(renderGraphBuilder.commandBuffer, static_cast<uint8_t>(topology));
-}
-export inline void SetRasterizationSamples(const SRenderContext& renderGraphBuilder, const uint8_t samples, const uint32_t mask = 0xFFFFFFFF)
-{
-    DeerVulkan::SetRasterizationSamples(renderGraphBuilder.commandBuffer, samples, mask);
-}
-export inline void SetRasterizerDiscardEnable(const SRenderContext& renderGraphBuilder, const bool enable)
-{
-    DeerVulkan::SetRasterizerDiscardEnable(renderGraphBuilder.commandBuffer, enable);
-}
-export inline void SetStencilTestEnable(const SRenderContext& renderGraphBuilder, const bool enable)
-{
-    DeerVulkan::SetStencilTestEnable(renderGraphBuilder.commandBuffer, enable);
-}
-export inline void SetVertexInput(const SRenderContext& renderGraphBuilder)
-{
-    DeerVulkan::SetVertexInput(renderGraphBuilder.commandBuffer);
-}
-
-export inline void BindShader(const SRenderContext& renderGraphBuilder, const SShader& shader)
-{
-    DeerVulkan::BindShader(renderGraphBuilder.commandBuffer, shader.shader);
-}
-export inline void DrawFullscreen(const SRenderContext& renderGraphBuilder)
-{
-    DeerVulkan::DrawFullscreen(renderGraphBuilder.commandBuffer);
-}
-
-export template <class PassData>
-void SetRenderFunc(IRenderGraphBuilder& renderGraphBuilder, std::function<void(const PassData*, const SRenderContext&)> renderFunc)
-{
-    SRenderPassBase<PassData>* renderPass = std::bit_cast<SRenderPassBase<PassData>*>(renderGraphBuilder.currentRenderPass);
-    renderPass->renderFunction            = renderFunc;
-}
-
-export template <class PassData>
-IRenderGraphBuilder AddComputeRenderPass(SRenderGraph&renderGraph, PassData*& passData)
-{
-    // todo : remove the need for the seconde template argument
-    auto* renderPass = Get<SComputePass<PassData>, SRenderPassCore>(renderGraph.renderGraphObjectPool);
-    auto* renderData = Get<PassData>(renderGraph.renderGraphObjectPool);
+    // todo : implement proper memory management
+    auto* renderPass = new SRenderPass<PassData>{};
+    auto* renderData = new PassData{};
 
     Initialize(renderPass, true, static_cast<int>(renderGraph.renderPasses.size()), renderData);
     passData = renderPass->data;
 
     renderGraph.renderPasses.emplace_back(renderPass);
-    return IRenderGraphBuilder{nullptr, renderPass};
+    renderGraph.dirty = true;
+    return IRenderPassHandle{nullptr, renderPass};
 }
 
-export template <class PassData>
-IRenderGraphBuilder AddRasterRenderPass(SRenderGraph& renderGraph, PassData*& passData)
+template <class PassData>
+constexpr IRenderPassHandle AddRasterRenderPass(SRenderGraph& renderGraph, PassData*& passData) noexcept
 {
-    // todo : remove the need for the seconde template argument
-    auto* renderPass = Get<SRasterPass<PassData>, SRenderPassCore>(renderGraph.renderGraphObjectPool);
-    auto* renderData = Get<PassData>(renderGraph.renderGraphObjectPool);
+    // todo : implement proper memory management
+    auto* renderPass = new SRenderPass<PassData>{};
+    auto* renderData = new PassData{};
 
     Initialize(renderPass, true, static_cast<int>(renderGraph.renderPasses.size()), renderData);
     passData = renderPass->data;
 
     renderGraph.renderPasses.emplace_back(renderPass);
-    return IRenderGraphBuilder{nullptr, renderPass};
+    renderGraph.dirty = true;
+    return IRenderPassHandle{nullptr, renderPass->index};
 }
 
-export void ExecuteAll(SRenderer& renderer, const SRenderGraph& renderGraph)
+constexpr void EnableRenderPass(SRenderGraph& renderGraph, const IRenderPassHandle& handle) noexcept
 {
-    const SRenderContext renderContext{.commandBuffer = renderer.commandBuffer};
-    for (SRenderPassCore* renderPass : renderGraph.renderPasses)
+    renderGraph.renderPasses[handle.renderPassIdx]->isEnabled = false;
+    renderGraph.dirty                                         = true;
+}
+constexpr void DisableRenderPass(SRenderGraph& renderGraph, const IRenderPassHandle& handle) noexcept
+{
+    renderGraph.renderPasses[handle.renderPassIdx]->isEnabled = true;
+    renderGraph.dirty                                         = true;
+}
+constexpr void SetRenderTarget(SRenderGraph& renderGraph, const IRenderPassHandle& handle, STexture& color, STexture& depth) noexcept
+{
+    SetRenderColorTarget(renderGraph, handle, color);
+    SetRenderDepthTarget(renderGraph, handle, depth);
+    renderGraph.dirty = true;
+}
+constexpr void SetRenderColorTarget(SRenderGraph& renderGraph, const IRenderPassHandle& handle, STexture& color) noexcept
+{
+    renderGraph.renderPasses[handle.renderPassIdx]->colorImage = &color.image;
+    renderGraph.dirty                                          = true;
+}
+constexpr void SetRenderDepthTarget(SRenderGraph& renderGraph, const IRenderPassHandle& handle, STexture& depth) noexcept
+{
+    renderGraph.renderPasses[handle.renderPassIdx]->colorImage = &depth.image;
+    renderGraph.dirty                                          = true;
+}
+
+constexpr void ExecuteAll(SRenderer& renderer, SRenderGraph& renderGraph) noexcept
+{
+    if (renderGraph.dirty)
     {
+        renderGraph.compiledRenderPasses.clear();
+        for (SRenderPassBase* renderPass : renderGraph.renderPasses)
+        {
+            if (renderPass->isEnabled)
+            {
+                renderGraph.compiledRenderPasses.emplace_back(renderPass);
+            }
+        }
+        std::ranges::sort(renderGraph.compiledRenderPasses,
+                          [](const SRenderPassBase* pA, const SRenderPassBase* pB)
+                          {
+                              return pA->index < pB->index;
+                          });
+        renderGraph.dirty = false;
+    }
+    for (std::size_t i{}; i < renderGraph.compiledRenderPasses.size(); ++i)
+    {
+        SRenderPassBase* renderPass{renderGraph.compiledRenderPasses[i]};
+        const SRenderPassContext renderContext{
+            .device            = renderer.device,
+            .commandBuffer     = renderer.commandBuffer,
+            .swapChain         = renderer.swapChain,
+            .timelineSemaphore = renderer.timelineSemaphore,
+            .binarySemaphore   = renderer.binarySemaphore,
+            .queue             = &renderer.queue[g_presentQueueId],
+        };
+        PreRenderPass(renderContext, renderPass);
         renderPass->Execute(renderContext);
+        PostRenderPass(renderContext, renderPass);
     }
 }
-export void CleanupRenderGraph(SRenderGraph& renderGraph)
+constexpr void CleanupRenderGraph(SRenderGraph& renderGraph) noexcept
 {
-    for (SRenderPassCore* renderPass : renderGraph.renderPasses)
+    for (const SRenderPassBase* renderPass : renderGraph.renderPasses)
     {
-        Release(renderGraph.renderGraphObjectPool, renderPass);
+        delete renderPass;
     }
     renderGraph.renderPasses.clear();
 }
+
+constexpr void PreRenderPass(const SRenderPassContext& renderPassContext, const SRenderPassBase* renderPass) noexcept
+{
+    if (!renderPass)
+    {
+        return;
+    }
+    if (BeginCommand(renderPassContext.commandBuffer) != 0)
+    {
+        return;
+    }
+    DeerVulkan::SVkImage* color               = renderPass->colorImage;
+    DeerVulkan::SVkImage* depth               = renderPass->depthImage;
+    const DeerVulkan::SVkImageView* colorView = renderPass->colorImageView;
+    const DeerVulkan::SVkImageView* depthView = renderPass->depthImageView;
+    if (!color && !depth)
+    {
+        NextImage(renderPassContext.device, renderPassContext.swapChain, renderPassContext.binarySemaphore);
+        color     = &CurrentImage(renderPassContext.swapChain);
+        colorView = &CurrentImageView(renderPassContext.swapChain);
+    }
+    if (color)
+    {
+        TransitionImageLayout(renderPassContext.commandBuffer, *color, static_cast<uint32>(image_layout::color_attachment_optimal));
+    }
+    if (depth)
+    {
+        TransitionImageLayout(renderPassContext.commandBuffer, *depth, static_cast<uint32>(image_layout::depth_stencil_attachment_optimal));
+    }
+
+    BeginRender(renderPassContext.commandBuffer,
+                DeerVulkan::RenderParams{.colorImageView = colorView,
+                                         .depthImageView = depthView,
+                                         .clearColor     = {0, 0, 0},
+                                         .depthClear     = 0,
+                                         .xOffset        = 0,
+                                         .yOffset        = 0,
+                                         .width          = renderPassContext.swapChain.extent.width,
+                                         .height         = renderPassContext.swapChain.extent.height,
+                                         .stencilClear   = 0});
+}
+inline void PostRenderPass(const SRenderPassContext& renderPassContext, const SRenderPassBase* renderPass) noexcept
+{
+    EndRender(renderPassContext.commandBuffer);
+
+    DeerVulkan::SVkImage* color = renderPass->colorImage;
+    DeerVulkan::SVkImage* depth = renderPass->depthImage;
+
+    const bool isSwapChain{!color && !depth};
+    if (isSwapChain)
+    {
+        DeerVulkan::SVkImage& swapChainImage{CurrentImage(renderPassContext.swapChain)};
+        TransitionImageLayout(renderPassContext.commandBuffer, swapChainImage, static_cast<uint32>(image_layout::present_src_khr));
+    }
+    else
+    {
+        if (color)
+        {
+            TransitionImageLayout(renderPassContext.commandBuffer, *color, static_cast<uint32>(image_layout::shader_read_only_optimal));
+        }
+        if (depth)
+        {
+            TransitionImageLayout(renderPassContext.commandBuffer, *depth, static_cast<uint32>(image_layout::depth_stencil_attachment_optimal));
+        }
+    }
+
+    // End the command buffer and handle possible failure
+    if (EndCommand(renderPassContext.commandBuffer) != 0)
+    {
+        return;
+    }
+
+    // Determine the wait and signal values for synchronization
+    const bool wait{(renderPass->syncMode & SYNC_WAIT) != 0};
+    const bool signal{(renderPass->syncMode & SYNC_SIGNAL) != 0};
+
+    if (wait)
+    {
+        if (signal)
+        {
+            if (QueueSubmit(*renderPassContext.queue, renderPassContext.commandBuffer, renderPassContext.timelineSemaphore, renderPass->waitValue, renderPass->signalValue) != 0)
+            {
+                return;
+            }
+        }
+        else
+        {
+            if (QueueSubmit(*renderPassContext.queue, renderPassContext.commandBuffer, renderPassContext.timelineSemaphore, renderPass->waitValue, true) != 0)
+            {
+                return;
+            }
+        }
+    }
+    else if (signal)
+    {
+        if (QueueSubmit(*renderPassContext.queue, renderPassContext.commandBuffer, renderPassContext.timelineSemaphore, renderPass->signalValue, false) != 0)
+        {
+            return;
+        }
+    }
+    else
+    {
+        if (QueueSubmit(*renderPassContext.queue, renderPassContext.commandBuffer) != 0)
+        {
+            return;
+        }
+    }
+
+    // Present to screen if no colour and depth image is provided
+    if (isSwapChain)
+    {
+        if (Present(*renderPassContext.queue, renderPassContext.swapChain, renderPassContext.binarySemaphore) != 0)
+        {
+            return;
+        }
+
+        NextFrame(renderPassContext.swapChain);
+    }
+    WaitIdle(*renderPassContext.queue);
+}
+#pragma endregion
 } // namespace FawnVision
