@@ -24,6 +24,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Download Vulkan SDK
+        run: |
+          curl -LO https://sdk.lunarg.com/sdk/download/1.3.275.0/windows/vulkan_sdk.exe
+          mkdir -p ${{runner.workspace}}\VulkanSDK
+          ./vulkan_sdk.exe --target ${{runner.workspace}}\VulkanSDK --quiet
+
+      - name: Copy Vulkan SDK folders
+        run: |
+          mkdir -p ${{runner.workspace}}\3rdParty/Vulkan
+          cp -r ${{runner.workspace}}\VulkanSDK/Include ${{runner.workspace}}\3rdParty/Vulkan/include
+          cp -r ${{runner.workspace}}\VulkanSDK/Lib ${{runner.workspace}}\3rdParty/Vulkan/libraries
+          cp -r ${{runner.workspace}}\VulkanSDK/Bin ${{runner.workspace}}\3rdParty/Vulkan/binaries
+
       - name: Configure CMake
         run: >
           cmake -B ${{runner.workspace}}\Build
