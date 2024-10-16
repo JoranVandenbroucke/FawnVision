@@ -1,16 +1,65 @@
-# Description
+# PR Title
 
-Please include a summary of the changes and the related issue. Please also include relevant motivation and context. List any dependencies that are required for this change.
+## Reason for PR
 
-Fixes # (issue)
+<!--
+Why is this a pull request?
+-->
 
-## Type of change
+## Description
 
-Please delete options that are not relevant.
+<!--
+How was the problem solved?
+How was the new feature implemented?
+-->
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] This change requires a documentation update
+## Change Log
 
-# How Has This Been Tested?
+<!--
+Added ...
+Removed ...
+Fixed ...
+Moved ...
+-->
+
+## Halo Effect
+
+<!--
+How significant is the effect of the fix/feature?
+-->
+
+- [ ] Minor
+- [ ] Moderate
+- [ ] Significant
+
+## Performance
+
+<!--
+What is the performance impact of the fix/feature?
+-->
+
+- [ ] Significant Improvement
+- [ ] Improvement
+- [ ] No Change
+- [ ] Slight Regression
+- [ ] Significant Regressionn
+
+## Testing
+
+<!--
+Describe the tests added, removed, or updated. Indicate test success:
+-->
+
+## Related Issue
+
+<!--
+Link to the related issue (if applicable)
+-->
+
+- [ ] Issue #[issue_number]
+
+## Extra Notes
+
+<!--
+Is there anything else that a reviewer needs to know?
+-->
