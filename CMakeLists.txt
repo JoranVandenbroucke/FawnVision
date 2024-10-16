@@ -1,80 +1,77 @@
-cmake_minimum_required(VERSION 3.27)
-set(PROJECT_NAME FawnVision)
-set(ROOT_NAMESPACE ${PROJECT_NAME})
-project(${PROJECT_NAME})
+cmake_minimum_required(VERSION 3.28)
+project(FawnVision VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BALBINO_VULKAN "Build with the Renderer with Vulkan" ON)
-option(BALBINO_BUILD_SDL "Build SDL (OFF when just include or depend on it" ON)
-set(SDL_TEST_LIBRARY OFF CACHE STRING "Build the SDL3_test library")
-set(SDL_LOCATION "" CACHE STRING "The location of SDL3")
-set(TARGET_OUTPUT ${PROJECT_NAME} CACHE STRING "Overwrite this with the exe/base project name")
 
-set(API_FILES)
 if (BALBINO_VULKAN)
-    include(API/Vulkan.cmake)
-    GetVulkanWrapperFiles()
-    get_property(VULKAN_API_WRAPPER_FILES GLOBAL PROPERTY VULKAN_API_WRAPPER_FILES)
-    set(API_FILES ${VULKAN_API_WRAPPER_FILES})
-endif ()
-add_library(${PROJECT_NAME}
-        Includes/FawnVision.hpp
-        Includes/FawnVision_Core.hpp
-        Includes/FawnVision_Error.hpp
-        Includes/FawnVision_Material.hpp
-        Includes/FawnVision_Renderer.hpp
-        Includes/FawnVision_Shader.hpp
-        Includes/FawnVision_Window.hpp
-        Includes/FawnVision_WindowEvents.hpp
-        Includes/Versions.hpp
-
-        Source/Error.cpp
-        Source/Error.hpp
-        Source/Material.cpp
-        Source/ObjectDefinitions.hpp
-        Source/Renderer.cpp
-        Source/Shader.cpp
-        Source/Window.cpp
-        Source/WindowEvents.cpp
-        Source/WindowEvents.hpp
-
-        ${API_FILES}
-)
-target_include_directories(${PROJECT_NAME} PRIVATE
-        Includes
-)
-
-if (SDL_LOCATION STREQUAL "")
-    find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
-    set(SDL_LIB SDL3::SDL3)
-else ()
-    if (BALBINO_BUILD_SDL)
-        add_subdirectory(${SDL_LOCATION} SDL3)
-    endif ()
-    add_dependencies(${PROJECT_NAME} SDL3::SDL3)
-    set(SDL_LIB SDL3::SDL3)
-
-    target_include_directories(${PROJECT_NAME} PUBLIC ${SDL_LOCATION}/include)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ${SDL_LIB})
+    include(Source/API/Vulkan.cmake)
 endif ()
 
+add_library(${PROJECT_NAME})
+target_sources(${PROJECT_NAME}
+        PRIVATE
+        ${VULKAN_API_FILES}
+        Source/Headers/architecture.hpp
+        Source/Headers/assert.hpp
+        Source/Headers/compiler.hpp
+        Source/Headers/enum_helpers.hpp
+        Source/Headers/platform.hpp
+        Source/Headers/todo.hpp
+        Source/Headers/utilities.hpp
+)
+target_sources(${PROJECT_NAME}
+        PUBLIC
+        FILE_SET fawnvision_module TYPE CXX_MODULES FILES
+        Source/Interface/UI/DeerUI.ixx
+        Source/Interface/Buffer.ixx
+        Source/Interface/Descriptor.ixx
+        Source/Interface/FawnEnums.ixx
+        Source/Interface/FawnVision.ixx
+        Source/Interface/Mesh.ixx
+        Source/Interface/Renderer.ixx
+        Source/Interface/RenderGraph.ixx
+        Source/Interface/RenderPass.ixx
+        Source/Interface/RenderPassContext.ixx
+        Source/Interface/Shader.ixx
+        Source/Interface/Texture.ixx
+        Source/Interface/Window.ixx
+)
+
+add_subdirectory(Font)
+add_dependencies(${PROJECT_NAME} DeerFont::DeerFont)
+
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+
+target_include_directories(${PROJECT_NAME} PRIVATE Source Source/Headers)
+
+include(${CMAKE_SOURCE_DIR}/CMake/SetupSDL3.cmake)
+include(${CMAKE_SOURCE_DIR}/CMake/SetupFawnAlgebra.cmake)
+setup_sdl3(${PROJECT_NAME})
+setup_fawnalgebra(${PROJECT_NAME})
 
 if (BALBINO_VULKAN)
     ConfigVulkanWrapper(${PROJECT_NAME})
 endif ()
 
-target_compile_options(${PROJECT_NAME} PRIVATE
-        $<$<CXX_COMPILER_ID:MSVC>:
-        /W4 /WX /MP $<$<CONFIG:Debug>:${DEFAULT_CXX_DEBUG_INFORMATION_FORMAT} ${DEFAULT_CXX_EXCEPTION_HANDLING}>
-        >
+target_compile_options(${PROJECT_NAME}
+        PRIVATE
+        $<$<CONFIG:Debug>:${DEFAULT_CXX_DEBUG_INFORMATION_FORMAT} ${DEFAULT_CXX_EXCEPTION_HANDLING}>
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX /MP >
         $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+        PUBLIC
+        $<$<CXX_COMPILER_ID:GNU>:-fmodules-ts>
+        # todo remove -Wdepricated -Wdepricated-declarations
+        #todo --embed-dir=${CMAKE_SOURCE_DIR}/Embedded/
+        $<$<CXX_COMPILER_ID:Clang>: -fembed-bitcode>
 )
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:-DBALBINO_DEBUG>)
 target_compile_features(${PROJECT_NAME} PRIVATE
-        c_function_prototypes
-        c_restrict
-        c_static_assert
-        c_std_17
-        c_variadic_macros
         cxx_aggregate_default_initializers
         cxx_alignof
         cxx_attributes
@@ -115,11 +112,11 @@ target_compile_features(${PROJECT_NAME} PRIVATE
 )
 
 install(FILES
-        $<TARGET_FILE:${SDL_LIB}>
-        DESTINATION ${TARGET_OUTPUT}  # Install the DLLs in the binary directory
+        $<TARGET_FILE:SDL3::SDL3>
+        DESTINATION ${CMAKE_BINARY_DIR}  # Install the DLLs in the binary directory
 )
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:${SDL_LIB}>
-        $<TARGET_FILE_DIR:${TARGET_OUTPUT}>
+        $<TARGET_FILE:SDL3::SDL3>
+        ${CMAKE_BINARY_DIR}
 )
