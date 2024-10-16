@@ -67,18 +67,11 @@ target_compile_options(${PROJECT_NAME}
         $<$<CXX_COMPILER_ID:GNU>:-fmodules-ts>
         # todo remove -Wdepricated -Wdepricated-declarations
         #todo --embed-dir=${CMAKE_SOURCE_DIR}/Embedded/
-        $<$<CXX_COMPILER_ID:Clang>:-stdlib=libc++ -fembed-bitcode -Wno-deprecated -Wno-deprecated-declarations>
+        $<$<CXX_COMPILER_ID:Clang>: -fembed-bitcode>
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE $<$<CONFIG:Debug>:-DBALBINO_DEBUG>)
-message(${CMAKE_BUILD_TYPE})
 target_compile_features(${PROJECT_NAME} PRIVATE
-        $<$<C_COMPILER_ID:MSVC>:c_std_17>
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:c_std_23>
-        c_function_prototypes
-        c_restrict
-        c_static_assert
-        c_variadic_macros
         cxx_aggregate_default_initializers
         cxx_alignof
         cxx_attributes
@@ -120,10 +113,10 @@ target_compile_features(${PROJECT_NAME} PRIVATE
 
 install(FILES
         $<TARGET_FILE:SDL3::SDL3>
-        DESTINATION ${TARGET_OUTPUT}  # Install the DLLs in the binary directory
+        DESTINATION ${CMAKE_BINARY_DIR}  # Install the DLLs in the binary directory
 )
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:SDL3::SDL3>
-        $<TARGET_FILE_DIR:${TARGET_OUTPUT}>
+        ${CMAKE_BINARY_DIR}
 )

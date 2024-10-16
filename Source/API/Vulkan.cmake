@@ -24,7 +24,13 @@ function(ConfigVulkanWrapper TARGET_NAME)
     # VULKAN_LOCATION needs to be overwritten by used Project
     set(VULKAN_LOCATION "" CACHE STRING "The location of Vulkan")
     if (VULKAN_LOCATION STREQUAL "")
-        message(FATAL_ERROR "No path to the vulkan sdk is given")
+        if (EXISTS "${CMAKE_SOURCE_DIR}/3rdParty/Vulkan")
+            set(VULKAN_LOCATION "${CMAKE_SOURCE_DIR}/3rdParty/Vulkan")
+        elseif (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/Vulkan")
+            set(VULKAN_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/Vulkan")
+        else ()
+            message(FATAL_ERROR "No path to the vulkan sdk is given")
+        endif ()
     endif ()
 
     target_include_directories(${TARGET_NAME} PUBLIC
