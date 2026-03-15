@@ -9,37 +9,37 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(BALBINO_VULKAN "Build with the Renderer with Vulkan" ON)
 
 if (BALBINO_VULKAN)
-    include(Source/API/Vulkan.cmake)
+    include(source/API/Vulkan.cmake)
 endif ()
 
 add_library(${PROJECT_NAME})
 target_sources(${PROJECT_NAME}
         PRIVATE
         ${VULKAN_API_FILES}
-        Source/Headers/architecture.hpp
-        Source/Headers/assert.hpp
-        Source/Headers/compiler.hpp
-        Source/Headers/enum_helpers.hpp
-        Source/Headers/platform.hpp
-        Source/Headers/todo.hpp
-        Source/Headers/utilities.hpp
+        source/Headers/architecture.hpp
+        source/Headers/assert.hpp
+        source/Headers/compiler.hpp
+        source/Headers/enum_helpers.hpp
+        source/Headers/platform.hpp
+        source/Headers/todo.hpp
+        source/Headers/utilities.hpp
 )
 target_sources(${PROJECT_NAME}
         PUBLIC
         FILE_SET fawnvision_module TYPE CXX_MODULES FILES
-        Source/Interface/UI/DeerUI.ixx
-        Source/Interface/Buffer.ixx
-        Source/Interface/Descriptor.ixx
-        Source/Interface/FawnEnums.ixx
-        Source/Interface/FawnVision.ixx
-        Source/Interface/Mesh.ixx
-        Source/Interface/Renderer.ixx
-        Source/Interface/RenderGraph.ixx
-        Source/Interface/RenderPass.ixx
-        Source/Interface/RenderPassContext.ixx
-        Source/Interface/Shader.ixx
-        Source/Interface/Texture.ixx
-        Source/Interface/Window.ixx
+        source/Interface/UI/DeerUI.ixx
+        source/Interface/Buffer.ixx
+        source/Interface/Descriptor.ixx
+        source/Interface/FawnEnums.ixx
+        source/Interface/FawnVision.ixx
+        source/Interface/Mesh.ixx
+        source/Interface/Renderer.ixx
+        source/Interface/RenderGraph.ixx
+        source/Interface/RenderPass.ixx
+        source/Interface/RenderPassContext.ixx
+        source/Interface/Shader.ixx
+        source/Interface/Texture.ixx
+        source/Interface/Window.ixx
 )
 
 add_subdirectory(Font)
@@ -47,10 +47,10 @@ add_dependencies(${PROJECT_NAME} DeerFont::DeerFont)
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-target_include_directories(${PROJECT_NAME} PRIVATE Source Source/Headers)
+target_include_directories(${PROJECT_NAME} PRIVATE Source source/Headers)
 
-include(${CMAKE_SOURCE_DIR}/CMake/SetupSDL3.cmake)
-include(${CMAKE_SOURCE_DIR}/CMake/SetupFawnAlgebra.cmake)
+include(setup_sdl3)
+include(setup_fawnalgebra)
 setup_sdl3(${PROJECT_NAME})
 setup_fawnalgebra(${PROJECT_NAME})
 

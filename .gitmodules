@@ -1,3 +1,3 @@
-[submodule "Font"]
-	path = Font
-	url = https://github.com/joranVandenbroucke/DeerFont.git
+[submodule "font"]
+	path = font
+	url = git@github.com:JoranVandenbroucke/DeerFont.git
