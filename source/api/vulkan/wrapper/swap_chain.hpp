@@ -22,7 +22,6 @@ struct SwapChain
 [[nodiscard]] inline auto Initialize(const Dispatch& dispatch, const Device& device, const Surface& surface, const std::int32_t width, const std::int32_t height,
                                      SwapChain& swapChain) noexcept -> vk_status
 {
-    swapChain.extent = surface.capabilities.currentExtent;
 
     vk::Extent2D swapChainExtent{
         .width  = surface.capabilities.currentExtent.width,
@@ -42,7 +41,7 @@ struct SwapChain
         .minImageCount         = surface.capabilities.minImageCount,
         .imageFormat           = imageFormat,
         .imageColorSpace       = vk::ColorSpaceKHR::eSrgbNonlinear,
-        .imageExtent           = vk::Extent2D{swapChainExtent.width, swapChainExtent.height},
+        .imageExtent           = swapChainExtent,
         .imageArrayLayers      = 1,
         .imageUsage            = vk::ImageUsageFlagBits::eColorAttachment,
         .imageSharingMode      = vk::SharingMode::eExclusive,
@@ -55,6 +54,7 @@ struct SwapChain
         .oldSwapchain          = swapChain.swapChain,
     };
 
+    swapChain.extent    = swapchainCI.imageExtent;
     swapChain.swapChain = device.device.createSwapchainKHR(swapchainCI, nullptr, dispatch.dispatch);
 
     const std::vector images{device.device.getSwapchainImagesKHR(swapChain.swapChain, dispatch.dispatch)};

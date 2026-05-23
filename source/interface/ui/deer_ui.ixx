@@ -403,20 +403,20 @@ void LayoutCanvas(Canvas& canvas) noexcept
         return;
     }
 
-    // Find first root element
-    UIElementHandle root{invalidElement};
+    ushort2 cursor{canvas.boundingBox.x, canvas.boundingBox.y};
+    const ushort2 canvasSize{canvas.boundingBox.z, canvas.boundingBox.w};
+
     for (UIElementHandle i{}; i < static_cast<UIElementHandle>(canvas.elements.size()); ++i)
     {
-        if (canvas.elements[i].parent == invalidElement)
+        if (canvas.elements[i].parent != invalidElement)
         {
-            root = i;
-            break;
+            continue;
         }
-    }
 
-    if (root != invalidElement)
-    {
-        LayoutSubtree(canvas, root, {canvas.boundingBox.x, canvas.boundingBox.y}, {canvas.boundingBox.z, canvas.boundingBox.w});
+        LayoutSubtree(canvas, i, cursor, canvasSize);
+
+        const UIElement& root{canvas.elements[i]};
+        cursor.y = static_cast<std::uint16_t>(root.computedBox.y + root.computedBox.w + root.layoutProperties.margin.y + root.layoutProperties.padding.y);
     }
 
     canvas.layoutDirty = false;
@@ -476,24 +476,23 @@ void Render(UIRenderer& ui, const PassData* pass, const fawn_vision::RenderPassC
 
     if (ui.anyDirty)
     {
-        // Sort canvases by layer once — only when the collection is dirty
         std::ranges::stable_sort(ui.canvases,
                                  [](const Canvas& a, const Canvas& b)
                                  {
                                      return a.layer < b.layer;
                                  });
-
-        for (std::size_t ci{}; ci < ui.canvases.size(); ++ci)
-        {
-            Canvas& canvas{ui.canvases[ci]};
-            LayoutCanvas(canvas);
-
-            if (canvas.instancesDirty)
-            {
-                RebuildCanvasInstances(canvas, ui.cachedInstances[ci], sx, sy);
-            }
-        }
         ui.anyDirty = false;
+    }
+
+    for (std::size_t ci{}; ci < ui.canvases.size(); ++ci)
+    {
+        Canvas& canvas{ui.canvases[ci]};
+        LayoutCanvas(canvas);
+
+        if (canvas.instancesDirty)
+        {
+            RebuildCanvasInstances(canvas, ui.cachedInstances[ci], sx, sy);
+        }
     }
 
     // ── Pipeline state — set once per frame ──────────────────────────────
@@ -617,23 +616,6 @@ namespace detail
 
     return insertAt;
 }
-
-constexpr void WireIntoParent(Canvas& canvas, const UIElementHandle handle, const UIElementHandle parentHandle) noexcept
-{
-    if (parentHandle == invalidElement)
-    {
-        return; // root elements need no wiring — they have no parent to update
-    }
-
-    UIElement& parent{canvas.elements[parentHandle]};
-
-    if (parent.childCount == 0)
-    {
-        parent.firstChild = handle;
-    }
-
-    ++parent.childCount;
-}
 } // namespace detail
 
 // ---------------------------------------------------------------------------
@@ -690,6 +672,16 @@ export inline auto Cleanup(const fawn_vision::Renderer& renderer, UIRenderer& ui
 
 // ── Canvas ─────────────────────────────────────────────────────────────────
 
+export inline auto NotifyWindowResized(UIRenderer& ui) noexcept -> void
+{
+    for (Canvas& canvas : ui.canvases)
+    {
+        canvas.layoutDirty    = true;
+        canvas.instancesDirty = true;
+    }
+    ui.anyDirty = true;
+}
+
 export inline auto CreateCanvas(UIRenderer& ui, const ushort2& position, const ushort2& size, const std::uint8_t layer, const canvas_flag flags, CanvasHandle& outHandle) noexcept
     -> void
 {
@@ -744,7 +736,6 @@ export inline auto AddElement(UIRenderer& ui, const CanvasHandle canvasHandle, c
     };
 
     outHandle = detail::AppendElement(canvas, std::move(el));
-    detail::WireIntoParent(canvas, outHandle, parentHandle);
 
     canvas.layoutDirty    = true;
     canvas.instancesDirty = true;

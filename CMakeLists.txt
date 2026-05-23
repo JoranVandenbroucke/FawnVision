@@ -94,6 +94,8 @@ add_dependencies(${PROJECT_NAME} DeerFont::DeerFont)
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/embedded/shaders.cmake)
+
 if (BALBINO_VULKAN)
     setup_vulkan(${PROJECT_NAME})
 endif ()

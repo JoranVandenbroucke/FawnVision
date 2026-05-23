@@ -585,7 +585,7 @@ inline void TransitionImageLayout(const Dispatch& dispatch, const CommandBuffer&
     const auto layout{static_cast<vk::ImageLayout>(newLayout)};
     const auto [srsStageMask, srsAccessMask]{getStageAccess(image.layout)};
     const auto [dstStageMask, dstAccessMask]{getStageAccess(layout)};
-    const vk::ImageMemoryBarrier barrierPresent{.sType               = vk::StructureType::eImageMemoryBarrier2,
+    const vk::ImageMemoryBarrier barrierPresent{.sType               = vk::StructureType::eImageMemoryBarrier,
                                            .pNext               = nullptr,
                                            .srcAccessMask       = srsAccessMask,
                                            .dstAccessMask       = dstAccessMask,

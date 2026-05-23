@@ -5,6 +5,7 @@
 
 module;
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_filesystem.h>
 #include <SDL3/SDL_vulkan.h>
 
 export module FawnVision:Window;
@@ -90,6 +91,88 @@ export struct WindowCreateInfo
     window_flags flags{window_flags::none};
 };
 
+export struct WindowSettings
+{
+    std::int32_t width{};
+    std::int32_t height{};
+    std::int32_t x{SDL_WINDOWPOS_CENTERED};
+    std::int32_t y{SDL_WINDOWPOS_CENTERED};
+    bool fullscreen{};
+    bool maximized{};
+    bool valid{};
+};
+
+export [[nodiscard]] inline auto IsHyprlandSession() noexcept -> bool
+{
+    return std::getenv("HYPRLAND_INSTANCE_SIGNATURE") != nullptr;
+}
+
+namespace detail
+{
+constexpr const char* appId{"balbino"};
+constexpr const char* prefOrganization{"Balbino"};
+constexpr const char* prefApplication{"Deer"};
+constexpr const char* windowSettingsFileName{"window.cfg"};
+
+[[nodiscard]] inline auto IsWaylandSession() noexcept -> bool
+{
+    return std::getenv("WAYLAND_DISPLAY") != nullptr;
+}
+
+inline auto ConfigurePlatformVideoHints() noexcept -> void
+{
+    static_cast<void>(SDL_SetHint(SDL_HINT_APP_ID, appId));
+    static_cast<void>(SDL_SetHint(SDL_HINT_APP_NAME, "Balbino Engine"));
+
+    if (IsHyprlandSession())
+    {
+        static_cast<void>(SDL_SetHint(SDL_HINT_VIDEO_WAYLAND_PREFER_LIBDECOR, "0"));
+    }
+}
+
+[[nodiscard]] inline auto GetWindowSettingsPath() noexcept -> std::optional<std::string>
+{
+    char* const prefPath{SDL_GetPrefPath(prefOrganization, prefApplication)};
+    if (prefPath == nullptr) [[unlikely]]
+    {
+        return std::nullopt;
+    }
+
+    std::string settingsPath{prefPath};
+    settingsPath += windowSettingsFileName;
+    SDL_free(prefPath);
+    return settingsPath;
+}
+
+[[nodiscard]] inline auto ParseBool(std::string_view value, bool& output) noexcept -> bool
+{
+    if (value == "1" || value == "true")
+    {
+        output = true;
+        return true;
+    }
+    if (value == "0" || value == "false")
+    {
+        output = false;
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] inline auto ParseInt(std::string_view value, std::int32_t& output) noexcept -> bool
+{
+    std::int32_t parsed{};
+    const auto [pointer, errorCode]{std::from_chars(value.data(), value.data() + value.size(), parsed)};
+    if (errorCode != std::errc{} || pointer != value.data() + value.size()) [[unlikely]]
+    {
+        return false;
+    }
+
+    output = parsed;
+    return true;
+}
+} // namespace detail
+
 export struct Window
 {
     SDL_Window* pWindow{nullptr};
@@ -98,9 +181,157 @@ export struct Window
     window_flags flags{window_flags::none};
 };
 
+[[nodiscard]] inline auto ResolveDisplayId(const std::uint8_t screen) noexcept -> SDL_DisplayID
+{
+    if (screen == 0)
+    {
+        if (const SDL_DisplayID primaryDisplay{SDL_GetPrimaryDisplay()}; primaryDisplay != 0)
+        {
+            return primaryDisplay;
+        }
+    }
+
+    int displayCount{};
+    const SDL_DisplayID* const pDisplays{SDL_GetDisplays(&displayCount)};
+    if (pDisplays == nullptr || displayCount <= 0) [[unlikely]]
+    {
+        return 0;
+    }
+
+    if (screen >= static_cast<std::uint8_t>(displayCount)) [[unlikely]]
+    {
+        return 0;
+    }
+
+    return pDisplays[screen];
+}
+
+export [[nodiscard]] inline auto SyncWindowSize(Window& window) noexcept -> bool
+{
+    if (window.pWindow == nullptr) [[unlikely]]
+    {
+        return false;
+    }
+
+    if (!SDL_GetWindowSize(window.pWindow, &window.width, &window.height)) [[unlikely]]
+    {
+        return false;
+    }
+
+    return window.width > 0 && window.height > 0;
+}
+
 export [[nodiscard]] inline auto InitializeSDL() noexcept -> bool
 {
+    detail::ConfigurePlatformVideoHints();
     return SDL_Init(SDL_INIT_VIDEO);
+}
+
+export [[nodiscard]] inline auto LoadWindowSettings() noexcept -> WindowSettings
+{
+    WindowSettings settings{};
+
+    const std::optional settingsPath{detail::GetWindowSettingsPath()};
+    if (!settingsPath.has_value()) [[unlikely]]
+    {
+        return settings;
+    }
+
+    std::ifstream input{settingsPath.value()};
+    if (!input.is_open()) [[unlikely]]
+    {
+        return settings;
+    }
+
+    std::string line{};
+    while (std::getline(input, line))
+    {
+        const std::size_t separator{line.find('=')};
+        if (separator == std::string::npos) [[unlikely]]
+        {
+            continue;
+        }
+
+        const std::string_view key{line.data(), separator};
+        const std::string_view value{line.data() + separator + 1, line.size() - separator - 1};
+
+        if (key == "width")
+        {
+            static_cast<void>(detail::ParseInt(value, settings.width));
+        }
+        else if (key == "height")
+        {
+            static_cast<void>(detail::ParseInt(value, settings.height));
+        }
+        else if (key == "x")
+        {
+            static_cast<void>(detail::ParseInt(value, settings.x));
+        }
+        else if (key == "y")
+        {
+            static_cast<void>(detail::ParseInt(value, settings.y));
+        }
+        else if (key == "fullscreen")
+        {
+            static_cast<void>(detail::ParseBool(value, settings.fullscreen));
+        }
+        else if (key == "maximized")
+        {
+            static_cast<void>(detail::ParseBool(value, settings.maximized));
+        }
+        else if (key == "valid")
+        {
+            static_cast<void>(detail::ParseBool(value, settings.valid));
+        }
+    }
+
+    return settings;
+}
+
+export [[nodiscard]] inline auto SaveWindowSettings(const Window& window) noexcept -> bool
+{
+    if (window.pWindow == nullptr) [[unlikely]]
+    {
+        return false;
+    }
+
+    const std::optional settingsPath{detail::GetWindowSettingsPath()};
+    if (!settingsPath.has_value()) [[unlikely]]
+    {
+        return false;
+    }
+
+    WindowSettings settings{
+        .valid = true,
+    };
+
+    if (!SDL_GetWindowSize(window.pWindow, &settings.width, &settings.height)) [[unlikely]]
+    {
+        return false;
+    }
+    if (!SDL_GetWindowPosition(window.pWindow, &settings.x, &settings.y)) [[unlikely]]
+    {
+        return false;
+    }
+
+    const SDL_WindowFlags sdlFlags{SDL_GetWindowFlags(window.pWindow)};
+    settings.fullscreen = (sdlFlags & SDL_WINDOW_FULLSCREEN) != 0U;
+    settings.maximized  = (sdlFlags & SDL_WINDOW_MAXIMIZED) != 0U;
+
+    std::ofstream output{settingsPath.value(), std::ios::trunc};
+    if (!output.is_open()) [[unlikely]]
+    {
+        return false;
+    }
+
+    output << "valid=1\n";
+    output << "width=" << settings.width << '\n';
+    output << "height=" << settings.height << '\n';
+    output << "x=" << settings.x << '\n';
+    output << "y=" << settings.y << '\n';
+    output << "fullscreen=" << (settings.fullscreen ? 1 : 0) << '\n';
+    output << "maximized=" << (settings.maximized ? 1 : 0) << '\n';
+    return static_cast<bool>(output);
 }
 
 export [[nodiscard]] inline auto CreateWindow(const WindowCreateInfo& createInfo, Window& window) noexcept -> bool
@@ -110,57 +341,45 @@ export [[nodiscard]] inline auto CreateWindow(const WindowCreateInfo& createInfo
         return false;
     }
 
-    int screenCount{};
-    const SDL_DisplayID* const pDisplayList = SDL_GetDisplays(&screenCount);
-    if (pDisplayList == nullptr || screenCount == 0) [[unlikely]]
+    const SDL_DisplayID displayId{ResolveDisplayId(createInfo.screen)};
+    if (displayId == 0) [[unlikely]]
     {
         return false;
     }
 
-    SDL_DisplayID targetDisplay{};
-    if (createInfo.screen == 0)
-    {
-        // Walk null-terminated array — check the VALUE not the pointer
-        for (const SDL_DisplayID* pId = pDisplayList; *pId != 0; ++pId)
-        {
-            if (const SDL_DisplayMode* pMode{SDL_GetDesktopDisplayMode(*pId)}; pMode != nullptr)
-            {
-                targetDisplay = *pId;
-                break;
-            }
-        }
-    }
-    else
-    {
-        if (createInfo.screen >= static_cast<std::uint8_t>(screenCount)) [[unlikely]]
-        {
-            return false;
-        }
-        targetDisplay = pDisplayList[createInfo.screen];
-    }
-
-    if (targetDisplay == 0) [[unlikely]]
+    SDL_Rect usableBounds{};
+    if (!SDL_GetDisplayUsableBounds(displayId, &usableBounds) || usableBounds.w <= 0 || usableBounds.h <= 0) [[unlikely]]
     {
         return false;
     }
 
-    if (const SDL_DisplayMode* const pMode{SDL_GetDesktopDisplayMode(targetDisplay)}; pMode == nullptr || createInfo.width > pMode->w || createInfo.height > pMode->h) [[unlikely]]
+    if (createInfo.width > usableBounds.w || createInfo.height > usableBounds.h) [[unlikely]]
     {
         return false;
     }
 
-    SDL_Window* const pWindow = SDL_CreateWindow(std::bit_cast<const char*>(createInfo.name), createInfo.width, createInfo.height, static_cast<SDL_WindowFlags>(createInfo.flags));
+    const std::int32_t xPosition{usableBounds.x + (usableBounds.w - createInfo.width) / 2};
+    const std::int32_t yPosition{usableBounds.y + (usableBounds.h - createInfo.height) / 2};
+
+    SDL_Window* const pWindow{SDL_CreateWindow(std::bit_cast<const char*>(createInfo.name), createInfo.width, createInfo.height,
+                                               static_cast<SDL_WindowFlags>(createInfo.flags))};
 
     if (pWindow == nullptr) [[unlikely]]
     {
         return false;
     }
 
+    if (!detail::IsWaylandSession())
+    {
+        static_cast<void>(SDL_SetWindowPosition(pWindow, xPosition, yPosition));
+    }
+
     window.pWindow = pWindow;
+    window.flags   = createInfo.flags;
     window.width   = createInfo.width;
     window.height  = createInfo.height;
-    window.flags   = createInfo.flags;
-    return true;
+
+    return SyncWindowSize(window);
 }
 
 export inline auto ReleaseWindow(const Window& window) noexcept -> void
@@ -206,6 +425,57 @@ export [[nodiscard]] inline auto SetWindowFlags(Window& window, const window_fla
 
     window.flags = flags;
     return true;
+}
+
+export [[nodiscard]] inline auto ApplySavedWindowLayout(Window& window, const WindowSettings& settings) noexcept -> bool
+{
+    if (window.pWindow == nullptr) [[unlikely]]
+    {
+        return false;
+    }
+
+    window_flags targetFlags{window.flags | window_flags::resizable};
+    if (HasFlag(targetFlags, window_flags::borderless))
+    {
+        targetFlags = targetFlags ^ window_flags::borderless;
+    }
+
+    if (settings.valid && settings.fullscreen)
+    {
+        targetFlags = targetFlags | window_flags::fullscreen;
+        return SetWindowFlags(window, targetFlags) != 0;
+    }
+
+    if (settings.valid && settings.maximized)
+    {
+        targetFlags = targetFlags | window_flags::maximized;
+        return SetWindowFlags(window, targetFlags) != 0;
+    }
+
+    if (settings.valid && settings.width > 0 && settings.height > 0)
+    {
+        if (!SetWindowFlags(window, targetFlags)) [[unlikely]]
+        {
+            return false;
+        }
+        if (!SDL_SetWindowSize(window.pWindow, settings.width, settings.height)) [[unlikely]]
+        {
+            return false;
+        }
+
+        window.width  = settings.width;
+        window.height = settings.height;
+
+        if (!detail::IsWaylandSession())
+        {
+            static_cast<void>(SDL_SetWindowPosition(window.pWindow, settings.x, settings.y));
+        }
+
+        return true;
+    }
+
+    targetFlags = targetFlags | window_flags::fullscreen;
+    return SetWindowFlags(window, targetFlags) != 0;
 }
 
 export [[nodiscard]] inline auto ToggleWindowFlags(Window& window, const window_flags flags) noexcept -> std::int32_t

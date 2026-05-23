@@ -10,9 +10,6 @@ struct Semaphore
     vk::Semaphore semaphore{nullptr};
     std::uint64_t value{};
     bool isTimeline{};
-
-    static PFN_vkWaitSemaphoresKHR vkWaitSemaphoresKHR;
-    static PFN_vkSignalSemaphoreKHR vkSignalSemaphoreKHR;
 };
 
 [[nodiscard]] inline auto Initialize(const Dispatch& dispatch, const Device& device, const bool isTimeline, Semaphore& semaphore) noexcept -> vk_status
@@ -25,8 +22,9 @@ struct Semaphore
         .semaphoreType = vk::SemaphoreType::eTimeline,
         .initialValue  = semaphore.value,
     };
+
     const vk::SemaphoreCreateInfo createInfo{
-        .sType = vk::StructureType::eSemaphoreTypeCreateInfo,
+        .sType = vk::StructureType::eSemaphoreCreateInfo,
         .pNext = isTimeline ? &typeInfo : nullptr,
         .flags = {},
     };
