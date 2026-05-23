@@ -20,13 +20,13 @@ export inline void Initialize(RenderGraph& renderGraph, DepthOnlyPass& depthOnly
 
 struct DepthPassData
 {
-    Texture depthTexture;
-    Shader depthShader;
+    Texture depthTexture{};
+    Shader depthShader{};
 };
 struct DepthOnlyPass
 {
-    DepthPassData* data;
-    RenderPassHandle renderPassHandle;
+    DepthPassData* data{nullptr};
+    RenderPassHandle renderPassHandle{};
 };
 inline void Initialize(RenderGraph& renderGraph, DepthOnlyPass& depthOnlyPass)
 {

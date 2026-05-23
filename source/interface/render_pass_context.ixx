@@ -151,11 +151,11 @@ export color_component operator|(const color_component& lhs, const color_compone
 
 export struct VertexAttributes
 {
-    std::uint32_t location;
-    std::uint32_t binding;
-    format pixelFormat;
-    std::uint32_t offset;
-    bool isInstance;
+    std::uint32_t location{};
+    std::uint32_t binding{};
+    format pixelFormat{};
+    std::uint32_t offset{};
+    bool isInstance{};
 };
 
 export struct RenderPassContext
@@ -278,7 +278,7 @@ export inline auto SetStencilTestEnable(const RenderPassContext& ctx, const bool
 // ---------------------------------------------------------------------------
 
 export template <std::size_t N = std::dynamic_extent>
-inline auto SetVertexInput(const RenderPassContext& ctx, const std::span<const VertexAttributes, N> attributes, const std::uint32_t vertexSize,
+auto SetVertexInput(const RenderPassContext& ctx, const std::span<const VertexAttributes, N> attributes, const std::uint32_t vertexSize,
                            const std::uint32_t instanceSize) noexcept -> void
 {
     std::vector<deer_vulkan::VertexAttributes> vkAttribs(attributes.size());
@@ -326,7 +326,7 @@ export inline auto BindMesh(const RenderPassContext& ctx, const Mesh& mesh) noex
 // ---------------------------------------------------------------------------
 
 export template <typename T, auto Size = std::dynamic_extent>
-inline auto CopyData(const RenderPassContext& ctx, const Buffer& buffer, const std::span<const T> data) noexcept -> void
+auto CopyData(const RenderPassContext& ctx, const Buffer& buffer, const std::span<const T, Size> data) noexcept -> void
 {
     deer_vulkan::CopyData(ctx.dispatch, ctx.device, buffer.buffer, data);
 }

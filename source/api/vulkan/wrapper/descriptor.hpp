@@ -29,9 +29,9 @@ struct Descriptor
     vk::DescriptorSetLayout descriptorSetLayout{nullptr};
     vk::PipelineLayout pipelineLayout{nullptr};
     vk::DescriptorSet descriptorSet{nullptr};
-    std::vector<vk::WriteDescriptorSet> writeDescriptorSets;
-    std::vector<vk::DescriptorImageInfo> imageInfos;
-    std::vector<vk::DescriptorBufferInfo> bufferInfos;
+    std::vector<vk::WriteDescriptorSet> writeDescriptorSets{};
+    std::vector<vk::DescriptorImageInfo> imageInfos{};
+    std::vector<vk::DescriptorBufferInfo> bufferInfos{};
 };
 
 [[nodiscard]] inline auto Initialize(const Dispatch& dispatch, const Device& device, const std::span<DescriptorLayout> descriptorLayouts, Descriptor& descriptor) noexcept

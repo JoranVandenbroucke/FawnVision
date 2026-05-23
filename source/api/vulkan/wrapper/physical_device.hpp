@@ -70,7 +70,7 @@ struct PhysicalDevice
         const auto& family     = queueFamilies[i];
         const bool hasGraphics = static_cast<bool>(family.queueFlags & vk::QueueFlagBits::eGraphics);
         const bool hasCompute  = static_cast<bool>(family.queueFlags & vk::QueueFlagBits::eCompute);
-        const bool hasPresent  = static_cast<bool>(SDL_Vulkan_GetPresentationSupport(static_cast<VkInstance>(instance.instance), device, i));
+        const bool hasPresent  = SDL_Vulkan_GetPresentationSupport(instance.instance, device, i);
 
         // Prefer a single family that does graphics+present with room for 2 queues
         if (hasGraphics && hasPresent && family.queueCount >= 2U)

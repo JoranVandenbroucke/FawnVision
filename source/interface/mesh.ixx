@@ -30,9 +30,7 @@ export struct Mesh
 template <std::integral Integer, std::size_t IE = std::dynamic_extent>
 [[nodiscard]] auto CreateIndexBuffer(const Renderer& renderer, Mesh& mesh, const std::span<const Integer, IE> indices) noexcept -> gfx_status
 {
-    const std::uint64_t byteSize = static_cast<std::uint64_t>(indices.size()) * sizeof(Integer);
-
-    if (Initialize(renderer, byteSize, buffer_usage::index_buffer, memory_property::host_visible | memory_property::host_coherent, mesh.indexBuffer) != gfx_status::ok)
+    if (Initialize(renderer, indices.size_bytes(), buffer_usage::index_buffer, memory_property::host_visible | memory_property::host_coherent, mesh.indexBuffer) != gfx_status::ok)
     {
         return gfx_status::not_ok;
     }
@@ -45,9 +43,7 @@ template <std::integral Integer, std::size_t IE = std::dynamic_extent>
 template <typename Vertex, std::size_t VE = std::dynamic_extent>
 [[nodiscard]] auto CreateVertexBuffer(const Renderer& renderer, Mesh& mesh, const std::span<const Vertex, VE> vertices) noexcept -> gfx_status
 {
-    const std::uint64_t byteSize = static_cast<std::uint64_t>(vertices.size()) * sizeof(Vertex);
-
-    if (Initialize(renderer, byteSize, buffer_usage::vertex_buffer, memory_property::host_visible | memory_property::host_coherent, mesh.vertexBuffer) != gfx_status::ok)
+    if (Initialize(renderer, vertices.size_bytes(), buffer_usage::vertex_buffer, memory_property::host_visible | memory_property::host_coherent, mesh.vertexBuffer) != gfx_status::ok)
     {
         return gfx_status::not_ok;
     }

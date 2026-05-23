@@ -52,8 +52,8 @@ export struct RenderPassHandle
 
 export struct RenderGraph
 {
-    std::vector<RenderPassBase*> passes;
-    std::vector<RenderPassBase*> compiled;
+    std::vector<RenderPassBase*> passes{};
+    std::vector<RenderPassBase*> compiled{};
     bool dirty{true};
 };
 

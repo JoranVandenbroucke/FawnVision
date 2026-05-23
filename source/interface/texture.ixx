@@ -388,13 +388,13 @@ constexpr image_aspect operator&(const image_aspect& lhs, const image_aspect& rh
     return static_cast<image_aspect>(static_cast<value_t>(lhs) & static_cast<value_t>(rhs));
 }
 
-constexpr bool operator==(const image_aspect& lhs, std::uint32_t rhs)
+constexpr bool operator==(const image_aspect& lhs, const std::uint32_t rhs)
 {
     using value_t = std::underlying_type_t<image_aspect>;
     return static_cast<value_t>(lhs) == rhs;
 }
 
-constexpr bool operator!=(const image_aspect& lhs, std::uint32_t rhs)
+constexpr bool operator!=(const image_aspect& lhs, const std::uint32_t rhs)
 {
     return !(lhs == rhs);
 }
@@ -421,7 +421,7 @@ export struct ImageTextureCreateInfo
     std::uint32_t mipOffset{};
     std::uint32_t layerOffset{};
     std::uint32_t layerCount{};
-    std::span<const std::uint8_t> pixelData; // non-owning — caller keeps data alive
+    std::span<const std::uint8_t> pixelData{}; // non-owning — caller keeps data alive
 };
 
 export struct RenderTextureCreateInfo
@@ -465,8 +465,7 @@ export [[nodiscard]] inline auto Initialize(const Renderer& renderer, const Imag
 
     // Upload via staging buffer
     Buffer stagingBuffer;
-    const uint64_t byteSize = static_cast<uint64_t>(createInfo.pixelData.size_bytes());
-    if (Initialize(renderer, byteSize, buffer_usage::transfer_src, memory_property::host_visible | memory_property::host_coherent, stagingBuffer) != gfx_status::ok) [[unlikely]]
+    if (Initialize(renderer, createInfo.pixelData.size_bytes(), buffer_usage::transfer_src, memory_property::host_visible | memory_property::host_coherent, stagingBuffer) != gfx_status::ok) [[unlikely]]
     {
         return gfx_status::not_ok;
     }

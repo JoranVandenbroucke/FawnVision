@@ -52,8 +52,7 @@ struct Image
     };
     image.image = device.device.createImage(imageCI, nullptr, dispatch.dispatch);
 
-    vk::MemoryRequirements memRequirements;
-    memRequirements = device.device.getImageMemoryRequirements(image.image, dispatch.dispatch);
+    const vk::MemoryRequirements memRequirements { device.device.getImageMemoryRequirements(image.image, dispatch.dispatch)};
 
     const vk::MemoryAllocateInfo allocInfo{
         .sType           = vk::StructureType::eMemoryAllocateInfo,

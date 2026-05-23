@@ -351,7 +351,7 @@ export struct UIRenderer
 
     // Per-canvas cached instance lists — rebuilt only when dirty.
     // Index matches canvases[i].
-    std::vector<std::vector<UIInstanceData>> cachedInstances;
+    std::vector<std::vector<UIInstanceData>> cachedInstances{};
 
     bool anyDirty{true};
 };

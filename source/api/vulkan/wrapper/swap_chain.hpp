@@ -11,8 +11,8 @@ namespace deer_vulkan
 
 struct SwapChain
 {
-    std::vector<Image> images;
-    std::vector<ImageView> imageViews;
+    std::vector<Image> images{};
+    std::vector<ImageView> imageViews{};
     vk::SwapchainKHR swapChain{nullptr};
     vk::Format imageFormat{vk::Format::eB8G8R8A8Srgb};
     vk::Extent2D extent{};

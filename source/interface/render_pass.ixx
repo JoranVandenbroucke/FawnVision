@@ -56,7 +56,7 @@ struct RenderPass final : RenderPassBase
 
 // Initialize a render pass — not constexpr, std::function is not a literal type.
 export template <class PassData>
-inline auto Initialize(RenderPass<PassData>* renderPass, const bool isComputePass, const std::int32_t passIndex, PassData* passData) noexcept -> void
+auto Initialize(RenderPass<PassData>* renderPass, const bool isComputePass, const std::int32_t passIndex, PassData* passData) noexcept -> void
 {
     if (renderPass == nullptr) [[unlikely]]
     {
@@ -70,7 +70,7 @@ inline auto Initialize(RenderPass<PassData>* renderPass, const bool isComputePas
 // Release resets a pass back to default state without deallocating.
 // Caller is responsible for deallocation (CleanupRenderGraph does this).
 export template <class PassData>
-inline auto Release(RenderPass<PassData>* renderPass) noexcept -> void
+auto Release(RenderPass<PassData>* renderPass) noexcept -> void
 {
     if (renderPass == nullptr) [[unlikely]]
     {

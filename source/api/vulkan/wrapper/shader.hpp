@@ -7,8 +7,8 @@ namespace deer_vulkan
 {
 struct Shader
 {
-    std::vector<vk::ShaderEXT> shaders;
-    std::vector<vk::ShaderStageFlagBits> stages;
+    std::vector<vk::ShaderEXT> shaders{};
+    std::vector<vk::ShaderStageFlagBits> stages{};
 };
 
 template <std::size_t N = std::dynamic_extent>

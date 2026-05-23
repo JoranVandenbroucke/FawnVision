@@ -123,8 +123,7 @@ export [[nodiscard]] inline auto CreateWindow(const WindowCreateInfo& createInfo
         // Walk null-terminated array — check the VALUE not the pointer
         for (const SDL_DisplayID* pId = pDisplayList; *pId != 0; ++pId)
         {
-            const SDL_DisplayMode* pMode = SDL_GetDesktopDisplayMode(*pId);
-            if (pMode != nullptr)
+            if (const SDL_DisplayMode* pMode{SDL_GetDesktopDisplayMode(*pId)}; pMode != nullptr)
             {
                 targetDisplay = *pId;
                 break;
@@ -145,8 +144,7 @@ export [[nodiscard]] inline auto CreateWindow(const WindowCreateInfo& createInfo
         return false;
     }
 
-    const SDL_DisplayMode* const pMode = SDL_GetDesktopDisplayMode(targetDisplay);
-    if (pMode == nullptr || createInfo.width > pMode->w || createInfo.height > pMode->h) [[unlikely]]
+    if (const SDL_DisplayMode* const pMode{SDL_GetDesktopDisplayMode(targetDisplay)}; pMode == nullptr || createInfo.width > pMode->w || createInfo.height > pMode->h) [[unlikely]]
     {
         return false;
     }
@@ -173,7 +171,7 @@ export inline auto ReleaseWindow(const Window& window) noexcept -> void
     }
 }
 
-export [[nodiscard]] inline auto SetWindowFlags(Window& window, window_flags flags) noexcept -> std::int32_t
+export [[nodiscard]] inline auto SetWindowFlags(Window& window, const window_flags flags) noexcept -> std::int32_t
 {
     if (window.pWindow == nullptr) [[unlikely]]
     {
@@ -210,7 +208,7 @@ export [[nodiscard]] inline auto SetWindowFlags(Window& window, window_flags fla
     return true;
 }
 
-export [[nodiscard]] inline auto ToggleWindowFlags(Window& window, window_flags flags) noexcept -> std::int32_t
+export [[nodiscard]] inline auto ToggleWindowFlags(Window& window, const window_flags flags) noexcept -> std::int32_t
 {
     return SetWindowFlags(window, window.flags ^ flags);
 }

@@ -4,7 +4,6 @@
 //
 
 module;
-#include "api/vulkan/wrapper/buffer.hpp"
 #include "api/vulkan/wrapper/descriptor.hpp"
 
 export module FawnVision:Descriptor;
@@ -83,7 +82,7 @@ export struct Descriptor
 };
 
 export template <auto Size = std::dynamic_extent>
-[[nodiscard]] inline auto Initialize(const Renderer& renderer, const std::span<const DescriptorData, Size>& createInfo, Descriptor& descriptor) noexcept -> gfx_status
+[[nodiscard]] auto Initialize(const Renderer& renderer, const std::span<const DescriptorData, Size>& createInfo, Descriptor& descriptor) noexcept -> gfx_status
 {
     std::vector<deer_vulkan::DescriptorLayout> layouts(createInfo.size());
     for (std::size_t i{}; i < createInfo.size(); ++i)

@@ -44,7 +44,7 @@ export struct Shader
 };
 
 export template <auto Size = std::dynamic_extent>
-[[nodiscard]] inline auto CreateShader(const Renderer& renderer, const std::span<const ShaderData, Size>& shaderCreateInfo, Shader& shader,
+[[nodiscard]] auto CreateShader(const Renderer& renderer, const std::span<const ShaderData, Size>& shaderCreateInfo, Shader& shader,
                                        const Descriptor* descriptor = nullptr) noexcept -> gfx_status
 {
     const std::size_t count = shaderCreateInfo.size();

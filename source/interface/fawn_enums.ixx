@@ -50,10 +50,10 @@ export enum class gfx_status : std::int8_t {
     not_ok     = -1, // unrecoverable error, caller should shut down
 };
 
-[[nodiscard]] constexpr auto ToGfxStatus(deer_vulkan::vk_status s) noexcept -> gfx_status
+[[nodiscard]] constexpr auto ToGfxStatus(const deer_vulkan::vk_status status) noexcept -> gfx_status
 {
     using vs = deer_vulkan::vk_status;
-    switch (s)
+    switch (status)
     {
     case vs::ok: [[fallthrough]];
     case vs::not_ready: [[fallthrough]]; // caller is polling — still fine

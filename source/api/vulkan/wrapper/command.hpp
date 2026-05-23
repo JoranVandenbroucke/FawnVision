@@ -44,8 +44,8 @@ struct RenderParams
 
 struct StageAccess
 {
-    vk::PipelineStageFlags stageMask;
-    vk::AccessFlags accessMask;
+    vk::PipelineStageFlags stageMask{};
+    vk::AccessFlags accessMask{};
 };
 
 [[nodiscard]] constexpr auto IsDepthLayout(const vk::ImageLayout layout) noexcept -> bool
@@ -209,7 +209,7 @@ inline void SetViewport(const Dispatch& dispatch, const CommandBuffer& commandBu
         .minDepth = minDepth,
         .maxDepth = maxDepth,
     };
-    commandBuffer.commandBuffer.front().setViewportWithCount(viewport, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().setViewportWithCount({viewport}, dispatch.dispatch);
 }
 
 inline void SetScissor(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const std::uint32_t width, const std::uint32_t height, const std::int32_t xPos,
@@ -219,7 +219,7 @@ inline void SetScissor(const Dispatch& dispatch, const CommandBuffer& commandBuf
         .offset = {.x = xPos, .y = yPos},
         .extent = {.width = width, .height = height},
     };
-    commandBuffer.commandBuffer.front().setScissorWithCount(scissor, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().setScissorWithCount({scissor}, dispatch.dispatch);
 }
 
 inline void SetAlphaToCoverageEnable(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const bool enable) noexcept
@@ -230,7 +230,7 @@ inline void SetAlphaToCoverageEnable(const Dispatch& dispatch, const CommandBuff
 inline void SetColorBlendEnable(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const bool enable) noexcept
 {
     const vk::Bool32 isBlendEnabled{static_cast<vk::Bool32>(enable)};
-    commandBuffer.commandBuffer.front().setColorBlendEnableEXT(0U, 1U, &isBlendEnabled, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().setColorBlendEnableEXT(0U, {isBlendEnabled}, dispatch.dispatch);
 }
 
 inline void SetColorBlendEquation(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const std::uint32_t srcColorBlendFactor, const std::uint32_t dstColorBlendFactor,
@@ -246,13 +246,13 @@ inline void SetColorBlendEquation(const Dispatch& dispatch, const CommandBuffer&
         .alphaBlendOp        = static_cast<vk::BlendOp>(alphaBlendOp),
     };
 
-    commandBuffer.commandBuffer.front().setColorBlendEquationEXT(0U, 1U, &blendEquation, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().setColorBlendEquationEXT(0U, {blendEquation}, dispatch.dispatch);
 }
 
 inline void SetColorWriteMask(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const std::uint32_t mask) noexcept
 {
     const vk::ColorComponentFlags flags{static_cast<vk::ColorComponentFlagBits>(mask)};
-    commandBuffer.commandBuffer.front().setColorWriteMaskEXT(0U, 1U, &flags, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().setColorWriteMaskEXT(0U, {flags}, dispatch.dispatch);
 }
 
 inline void SetCullMode(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const std::uint8_t cullMode) noexcept
@@ -311,7 +311,7 @@ inline void SetRasterizationSamples(const Dispatch& dispatch, const CommandBuffe
     const auto samples{static_cast<vk::SampleCountFlagBits>(sampleSize)};
     const vk::SampleMask sampleMask{mask};
     commandBuffer.commandBuffer.front().setRasterizationSamplesEXT(samples, dispatch.dispatch);
-    commandBuffer.commandBuffer.front().setSampleMaskEXT(samples, &sampleMask, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().setSampleMaskEXT(samples, {sampleMask}, dispatch.dispatch);
 }
 
 inline void SetRasterizerDiscardEnable(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const bool enable) noexcept
@@ -380,7 +380,7 @@ inline void SetVertexInput(const Dispatch& dispatch, const CommandBuffer& comman
         .inputRate = vk::VertexInputRate::eVertex,
         .divisor   = 1U,
     };
-    commandBuffer.commandBuffer.front().setVertexInputEXT(1U, &emptyBinding, 0U, nullptr, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().setVertexInputEXT({emptyBinding}, {}, dispatch.dispatch);
 }
 
 // ---------------------------------------------------------------------------
@@ -394,8 +394,7 @@ inline void BindShader(const Dispatch& dispatch, const CommandBuffer& commandBuf
 
 inline void BindDescriptor(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const Descriptor& descriptor) noexcept
 {
-    commandBuffer.commandBuffer.front().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, descriptor.pipelineLayout, 0U, 1U, &descriptor.descriptorSet, 0U, nullptr,
-                                                           dispatch.dispatch);
+    commandBuffer.commandBuffer.front().bindDescriptorSets(vk::PipelineBindPoint::eGraphics, descriptor.pipelineLayout, 0U, {descriptor.descriptorSet}, {}, dispatch.dispatch);
 }
 
 inline void BindIndexBuffer(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const Buffer& buffer) noexcept
@@ -405,14 +404,14 @@ inline void BindIndexBuffer(const Dispatch& dispatch, const CommandBuffer& comma
 
 inline void BindVertexBuffer(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const Buffer& buffer) noexcept
 {
-    static constexpr vk::DeviceSize kOffset{0ULL};
-    commandBuffer.commandBuffer.front().bindVertexBuffers(0U, 1U, &buffer.buffer, &kOffset, dispatch.dispatch);
+    static constexpr vk::DeviceSize offset{0ULL};
+    commandBuffer.commandBuffer.front().bindVertexBuffers(0U, {buffer.buffer}, {offset}, dispatch.dispatch);
 }
 
 inline void BindInstanceBuffer(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const Buffer& buffer) noexcept
 {
-    static constexpr vk::DeviceSize kOffset{0ULL};
-    commandBuffer.commandBuffer.front().bindVertexBuffers(1U, 1U, &buffer.buffer, &kOffset, dispatch.dispatch);
+    static constexpr vk::DeviceSize offset{0ULL};
+    commandBuffer.commandBuffer.front().bindVertexBuffers(1U, {buffer.buffer}, {offset}, dispatch.dispatch);
 }
 
 // ---------------------------------------------------------------------------
@@ -426,7 +425,7 @@ inline void CopyBuffers(const Dispatch& dispatch, const CommandBuffer& commandBu
         .dstOffset = 0ULL,
         .size      = size,
     };
-    commandBuffer.commandBuffer.front().copyBuffer(fromBuffer.buffer, toBuffer.buffer, 1U, &copyRegion, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().copyBuffer(fromBuffer.buffer, toBuffer.buffer, {copyRegion}, dispatch.dispatch);
 }
 
 inline void CopyToImage(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const Buffer& buffer, const Image& image, const std::uint32_t width,
@@ -452,7 +451,7 @@ inline void CopyToImage(const Dispatch& dispatch, const CommandBuffer& commandBu
                                          .depth  = depth,
                                      },};
 
-    commandBuffer.commandBuffer.front().copyBufferToImage(buffer.buffer, image.image, vk::ImageLayout::eTransferDstOptimal, 1U, &region, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().copyBufferToImage(buffer.buffer, image.image, vk::ImageLayout::eTransferDstOptimal, {region}, dispatch.dispatch);
 
     EndCommand(dispatch, commandBuffer);
 }
@@ -492,8 +491,8 @@ inline void CopyToImage(const Dispatch& dispatch, const CommandBuffer& commandBu
         barrier.srcAccessMask                 = vk::AccessFlagBits::eTransferWrite;
         barrier.dstAccessMask                 = vk::AccessFlagBits::eTransferRead;
 
-        commandBuffer.commandBuffer.front().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags{}, 0, nullptr, 0,
-                                                            nullptr, 1U, &barrier, dispatch.dispatch);
+        commandBuffer.commandBuffer.front().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, vk::DependencyFlags{}, {}, {}, {barrier},
+                                                            dispatch.dispatch);
 
         const vk::ImageBlit blit{
             .srcSubresource = vk::ImageSubresourceLayers{.aspectMask = vk::ImageAspectFlagBits::eColor, .mipLevel = i - 1U, .baseArrayLayer = 0U, .layerCount = 1U,},
@@ -502,7 +501,7 @@ inline void CopyToImage(const Dispatch& dispatch, const CommandBuffer& commandBu
             .dstOffsets     = std::array{vk::Offset3D{.x=0, .y=0, .z=0}, vk::Offset3D{.x=mipWidth > 1 ? mipWidth >> 1 : 1,.y= mipHeight > 1 ? mipHeight >> 1 : 1,.z= 1}},
         };
 
-        commandBuffer.commandBuffer.front().blitImage(image.image, vk::ImageLayout::eTransferSrcOptimal, image.image, vk::ImageLayout::eTransferDstOptimal, 1U, &blit,
+        commandBuffer.commandBuffer.front().blitImage(image.image, vk::ImageLayout::eTransferSrcOptimal, image.image, vk::ImageLayout::eTransferDstOptimal, {blit},
                                                       vk::Filter::eLinear, dispatch.dispatch);
 
         barrier.oldLayout     = vk::ImageLayout::eTransferSrcOptimal;
@@ -510,8 +509,8 @@ inline void CopyToImage(const Dispatch& dispatch, const CommandBuffer& commandBu
         barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
         barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
-        commandBuffer.commandBuffer.front().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, vk::DependencyFlags{}, 0U, nullptr,
-                                                            0U, nullptr, 1U, &barrier, dispatch.dispatch);
+        commandBuffer.commandBuffer.front().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, vk::DependencyFlags{}, {}, {},
+                                                            {barrier}, dispatch.dispatch);
 
         if (mipWidth > 1)
         {
@@ -528,8 +527,8 @@ inline void CopyToImage(const Dispatch& dispatch, const CommandBuffer& commandBu
     barrier.newLayout                     = vk::ImageLayout::eReadOnlyOptimal;
     barrier.srcAccessMask                 = vk::AccessFlagBits::eTransferRead;
     barrier.dstAccessMask                 = vk::AccessFlagBits::eShaderRead;
-    commandBuffer.commandBuffer.front().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, vk::DependencyFlagBits{}, 0, nullptr, 0,
-                                                        nullptr, 1U, &barrier, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, vk::DependencyFlagBits{}, {}, {},
+                                                        {barrier}, dispatch.dispatch);
 
     EndCommand(dispatch, commandBuffer);
     return vk_status::ok;
@@ -603,7 +602,7 @@ inline void TransitionImageLayout(const Dispatch& dispatch, const CommandBuffer&
                                                .layerCount     = layerCount,
                                            },};
 
-    commandBuffer.commandBuffer.front().pipelineBarrier(srsStageMask, dstStageMask, {}, 0, nullptr, 0, nullptr, 1, &barrierPresent, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().pipelineBarrier(srsStageMask, dstStageMask, {}, {}, {}, {barrierPresent}, dispatch.dispatch);
     image.layout = static_cast<vk::ImageLayout>(newLayout);
 }
 

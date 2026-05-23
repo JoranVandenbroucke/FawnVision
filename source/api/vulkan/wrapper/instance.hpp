@@ -63,9 +63,7 @@ enum class LinuxDisplayServer : std::uint8_t
     try
     {
         // --- Build required extension list ---
-        std::vector<const char*> enabledExtensions{
-            vk::KHRSurfaceExtensionName,
-        };
+        std::vector enabledExtensions{vk::KHRSurfaceExtensionName};
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
         enabledExtensions.push_back(vk::KHRWin32SurfaceExtensionName);
