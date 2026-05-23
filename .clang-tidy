@@ -1,3 +1,4 @@
+InheritParentConfig: true
 # Generated from CLion Inspection settings
 ---
 Checks: >
@@ -22,12 +23,6 @@ Checks: >
 CheckOptions:
   - key: readability-identifier-naming.AbstractClassCase
     value: CamelCase
-  - key: readability-identifier-naming.AbstractClassPrefix
-    value: I
-  - key: readability-identifier-naming.ClassCase
-    value: CamelCase
-  - key: readability-identifier-naming.ClassPrefix
-    value: C
   - key: readability-identifier-naming.ClassConstantCase
     value: camelCase
   - key: readability-identifier-naming.ClassMemberCase
@@ -77,7 +72,7 @@ CheckOptions:
   - key: readability-identifier-naming.GlobalVariablePrefix
     value: g_
   - key: readability-identifier-naming.InlineNamespaceCase
-    value: CamelCase
+    value: lower_case
   - key: readability-identifier-naming.LocalConstantCase
     value: camelCase
   - key: readability-identifier-naming.LocalConstantPointerCase
@@ -97,7 +92,7 @@ CheckOptions:
   - key: readability-identifier-naming.MethodCase
     value: CamelCase
   - key: readability-identifier-naming.NamespaceCase
-    value: CamelCase
+    value: lower_case
   - key: readability-identifier-naming.ParameterCase
     value: camelCase
   - key: readability-identifier-naming.ParameterPackCase
@@ -144,8 +139,6 @@ CheckOptions:
     value: CamelCase
   - key: readability-identifier-naming.UnionCase
     value: CamelCase
-  - key: readability-identifier-naming.UnionPrefix
-    value: U
   - key: readability-identifier-naming.ValueTemplateParameterCase
     value: CamelCase
   - key: readability-identifier-naming.VariableCase
