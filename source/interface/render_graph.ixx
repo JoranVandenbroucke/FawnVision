@@ -179,7 +179,7 @@ constexpr void PreRenderPass(const RenderPassContext& renderPassContext, const R
     const deer_vulkan::ImageView* depthView = renderPass->depthImageView;
     if (!color && !depth)
     {
-        deer_vulkan::vk_status _{NextImage(renderPassContext.dispatch, renderPassContext.device, renderPassContext.swapChain, renderPassContext.binarySemaphore)};
+        [[maybe_unused]] deer_vulkan::vk_status status{NextImage(renderPassContext.dispatch, renderPassContext.device, renderPassContext.swapChain, renderPassContext.binarySemaphore)};
         color     = &CurrentImage(renderPassContext.swapChain);
         colorView = &CurrentImageView(renderPassContext.swapChain);
     }
@@ -203,6 +203,7 @@ constexpr void PreRenderPass(const RenderPassContext& renderPassContext, const R
                                                        .height         = renderPassContext.swapChain.extent.height,
                                                        .stencilClear   = 0});
 }
+
 inline void PostRenderPass(const RenderPassContext& renderPassContext, const RenderPassBase* renderPass) noexcept
 {
     deer_vulkan::EndRender(renderPassContext.dispatch, renderPassContext.commandBuffer);

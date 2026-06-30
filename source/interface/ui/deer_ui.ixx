@@ -35,16 +35,24 @@ struct Pad<Member, 0>
 template <typename Base, typename Member, std::size_t O>
 struct MakeUnion
 {
+#if defined(_MSC_VER)
+#    pragma warning(push)
+#    pragma warning(disable : 4324) // structure padded due to alignment specifier
+#elif defined(__GNUC__) || defined(__clang__)
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wpadded"
+#endif
     union U
     {
-        char c;
+        char c{};
         Base base;
         Pad<Member, O> pad;
-        constexpr U() noexcept
-            : c{}
-        {
-        }
     };
+#if defined(_MSC_VER)
+#    pragma warning(pop)
+#elif defined(__GNUC__) || defined(__clang__)
+#    pragma GCC diagnostic pop
+#endif
     constexpr static U u{};
 };
 
@@ -523,12 +531,12 @@ void Render(UIRenderer& ui, const PassData* pass, const fawn_vision::RenderPassC
     SetStencilTestEnable(ctx, false);
 
     constexpr std::array attributes{
-        VertexAttributes{0, 0, format::r32g32_sfloat, offset_of(&Vertex::position), false},
-        VertexAttributes{1, 0, format::r32g32_sfloat, offset_of(&Vertex::uv), false},
-        VertexAttributes{2, 1, format::r32g32_sfloat, offset_of(&UIInstanceData::scale), true},
-        VertexAttributes{3, 1, format::r32g32_sfloat, offset_of(&UIInstanceData::translate), true},
-        VertexAttributes{4, 1, format::r32g32b32a32_sfloat, offset_of(&UIInstanceData::color), true},
-        VertexAttributes{5, 1, format::r32g32b32a32_sfloat, offset_of(&UIInstanceData::uvRect), true},
+        VertexAttributes{0, 0, format::r32g32_sfloat, static_cast<std::uint32_t>(offset_of(&Vertex::position)), false},
+        VertexAttributes{1, 0, format::r32g32_sfloat, static_cast<std::uint32_t>(offset_of(&Vertex::uv)), false},
+        VertexAttributes{2, 1, format::r32g32_sfloat, static_cast<std::uint32_t>(offset_of(&UIInstanceData::scale)), true},
+        VertexAttributes{3, 1, format::r32g32_sfloat, static_cast<std::uint32_t>(offset_of(&UIInstanceData::translate)), true},
+        VertexAttributes{4, 1, format::r32g32b32a32_sfloat, static_cast<std::uint32_t>(offset_of(&UIInstanceData::color)), true},
+        VertexAttributes{5, 1, format::r32g32b32a32_sfloat, static_cast<std::uint32_t>(offset_of(&UIInstanceData::uvRect)), true},
     };
     SetVertexInput(ctx, std::span(attributes), sizeof(Vertex), sizeof(UIInstanceData));
     BindMesh(ctx, pass->mesh);
@@ -556,7 +564,7 @@ void Render(UIRenderer& ui, const PassData* pass, const fawn_vision::RenderPassC
 
             BindBuffer(ctx, pass->instanceBuffer);
 
-            Draw(ctx, quadIndices.size(), batchSize, 0U, 0U);
+            Draw(ctx, static_cast<std::uint32_t>(quadIndices.size()), batchSize, 0U, 0U);
         }
     }
 }
@@ -647,6 +655,10 @@ export [[nodiscard]] inline auto Initialize(const fawn_vision::Renderer& rendere
     {
         return -1;
     }
+
+    //todo: find a better way to set syncMode and signalValue
+    renderGraph.passes[pass.index]->syncMode = fawn_vision::SYNC_WAIT_SIGNAL;
+    renderGraph.passes[pass.index]->signalValue = 1;
 
     fawn_vision::SetRenderFunc<PassData>(renderGraph, pass,
                                          [&ui](const PassData* pPass, const fawn_vision::RenderPassContext& ctx)

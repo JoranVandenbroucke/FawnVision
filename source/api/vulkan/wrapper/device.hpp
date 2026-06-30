@@ -7,7 +7,7 @@ namespace deer_vulkan
 {
 struct Device
 {
-    vk::Device device{nullptr};
+    vk::Device  device{nullptr};
     vk::DescriptorPool descriptorPool{nullptr};
 };
 
@@ -23,7 +23,7 @@ struct Device
         queueCIs.push_back({
             .sType            = vk::StructureType::eDeviceQueueCreateInfo,
             .queueFamilyIndex = physicalDevice.graphicsQueueFamily,
-            .queueCount       = priorities.size(),
+            .queueCount       = static_cast<std::uint32_t>(priorities.size()),
             .pQueuePriorities = priorities.data(),
         });
     }
@@ -406,7 +406,7 @@ struct Device
         .pNext         = nullptr,
         .flags         = {},
         .maxSets       = 32,
-        .poolSizeCount = poolSizes.size(),
+        .poolSizeCount = static_cast<std::uint32_t>(poolSizes.size()),
         .pPoolSizes    = poolSizes.data(),
     };
 

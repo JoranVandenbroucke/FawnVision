@@ -75,6 +75,7 @@ enum class LinuxDisplayServer : std::uint8_t
         enabledExtensions.push_back(vk::KHRAndroidSurfaceExtensionName);
 #endif
 
+#if BALBINO_OS_LINUX || BALBINO_OS_UNIXENVIRONMENT
         switch (DetectLinuxDisplayServer())
         {
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
@@ -88,6 +89,7 @@ enum class LinuxDisplayServer : std::uint8_t
 #endif
         case LinuxDisplayServer::Unknown: break;
         }
+#endif
 
 #if defined(BALBINO_DEBUG)
         {

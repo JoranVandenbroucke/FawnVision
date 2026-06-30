@@ -41,11 +41,7 @@ vk::Bool32 deer_vulkan::DebugMessageFunc(const vk::DebugUtilsMessageSeverityFlag
         }
     }
 
-#    ifdef _WIN32
-    MessageBox(NULL, message.str().c_str(), "Alert", MB_OK);
-#    else
     std::cout << message.str() << std::endl;
-#    endif
 
     return false;
 }

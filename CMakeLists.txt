@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 4.3.0)
-set(CMAKE_CXX_COMPILER_IMPORT_STD ON)
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
-project(FawnVision VERSION 0.1.0 LANGUAGES CXX)
-
-set(CMAKE_CXX_MODULE_STD 1)
+set (CURRENT_PROJECT_NAME "FawnVision")
+if (NOT DEFINED PROJECT_NAME)   # standalone build
+    cmake_minimum_required(VERSION 4.3)
+    set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+    set(CMAKE_CXX_MODULE_STD 1)
+    project(${CURRENT_PROJECT_NAME} VERSION 0.1.0 LANGUAGES CXX)
+endif()
 
 option(BALBINO_VULKAN "Build with the Renderer with Vulkan" ON)
 
@@ -11,8 +12,8 @@ if (BALBINO_VULKAN)
     include(source/api/vulkan.cmake)
 endif ()
 
-add_library(${PROJECT_NAME})
-target_sources(${PROJECT_NAME}
+add_library(${CURRENT_PROJECT_NAME})
+target_sources(${CURRENT_PROJECT_NAME}
         PRIVATE
         ${VULKAN_SOURCE_FILES}
         PRIVATE
@@ -62,17 +63,17 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/embedded/shaders.hpp
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-        ${PROJECT_SOURCE_DIR}/source
-        ${PROJECT_SOURCE_DIR}/source/headers
+target_include_directories(${CURRENT_PROJECT_NAME} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/source
+        ${CMAKE_CURRENT_SOURCE_DIR}/source/headers
 
         PUBLIC
-        ${PROJECT_SOURCE_DIR}/embedded
+        ${CMAKE_CURRENT_SOURCE_DIR}/embedded
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:BALBINO_DEBUG> )
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
-set_target_properties(${PROJECT_NAME} PROPERTIES
+target_compile_definitions(${CURRENT_PROJECT_NAME} PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:BALBINO_DEBUG> )
+target_compile_features(${CURRENT_PROJECT_NAME} PRIVATE cxx_std_23)
+set_target_properties(${CURRENT_PROJECT_NAME} PROPERTIES
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS        OFF
     CXX_SCAN_FOR_MODULES  ON
@@ -83,29 +84,21 @@ include(compiler_select_sdl)
 include(compiler_select_linker)
 include(setup_sdl3)
 include(setup_fawnalgebra)
-set_compile_flags(${PROJECT_NAME})
-select_best_stl(${PROJECT_NAME})
-select_best_linker(${PROJECT_NAME})
-setup_sdl3(${PROJECT_NAME})
-setup_fawnalgebra(${PROJECT_NAME})
+set_compile_flags(${CURRENT_PROJECT_NAME})
+select_best_stl(${CURRENT_PROJECT_NAME})
+select_best_linker(${CURRENT_PROJECT_NAME})
+setup_sdl3(${CURRENT_PROJECT_NAME})
+setup_fawnalgebra(${CURRENT_PROJECT_NAME})
 
 add_subdirectory(font)
-add_dependencies(${PROJECT_NAME} DeerFont::DeerFont)
+add_dependencies(${CURRENT_PROJECT_NAME} DeerFont::DeerFont)
 
-add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+add_library(${CURRENT_PROJECT_NAME}::${CURRENT_PROJECT_NAME} ALIAS ${CURRENT_PROJECT_NAME})
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/embedded/shaders.cmake)
+build_shaders(${CURRENT_PROJECT_NAME})
 
 if (BALBINO_VULKAN)
-    setup_vulkan(${PROJECT_NAME})
+    setup_vulkan(${CURRENT_PROJECT_NAME})
 endif ()
 
-install(FILES
-        $<TARGET_FILE:SDL3::SDL3>
-        DESTINATION ${CMAKE_BINARY_DIR}  # Install the DLLs in the binary directory
-)
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:SDL3::SDL3>
-        ${CMAKE_BINARY_DIR}
-)

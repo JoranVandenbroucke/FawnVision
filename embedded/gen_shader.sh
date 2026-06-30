@@ -82,7 +82,7 @@ done
 
 for spv in "${SPV_FILES[@]}"; do
     varname="$(to_var_name "${spv}")"
-    echo "inline constexpr std::uint32_t ${varname}Size{std::size(${varname})};" >> "${OUTPUT}"
+    echo "inline constexpr std::uint32_t ${varname}Size{static_cast<std::uint32_t>(std::size(${varname}))};" >> "${OUTPUT}"
 done
 
 echo "" >> "${OUTPUT}"

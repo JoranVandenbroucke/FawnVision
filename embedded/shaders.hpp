@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 import std;
 
 #if defined(__cpp_pp_embed) && __cpp_pp_embed >= 202502L
@@ -238,10 +238,10 @@ inline constexpr std::uint8_t g_uiVert[]{
 
 #endif
 
-inline constexpr std::uint32_t g_fullscreenFragSize{std::size(g_fullscreenFrag)};
-inline constexpr std::uint32_t g_fullscreenVertSize{std::size(g_fullscreenVert)};
-inline constexpr std::uint32_t g_triangleFragSize{std::size(g_triangleFrag)};
-inline constexpr std::uint32_t g_triangleVertSize{std::size(g_triangleVert)};
-inline constexpr std::uint32_t g_uiFragSize{std::size(g_uiFrag)};
-inline constexpr std::uint32_t g_uiVertSize{std::size(g_uiVert)};
+inline constexpr std::uint32_t g_fullscreenFragSize{static_cast<std::uint32_t>(std::size(g_fullscreenFrag))};
+inline constexpr std::uint32_t g_fullscreenVertSize{static_cast<std::uint32_t>(std::size(g_fullscreenVert))};
+inline constexpr std::uint32_t g_triangleFragSize{static_cast<std::uint32_t>(std::size(g_triangleFrag))};
+inline constexpr std::uint32_t g_triangleVertSize{static_cast<std::uint32_t>(std::size(g_triangleVert))};
+inline constexpr std::uint32_t g_uiFragSize{static_cast<std::uint32_t>(std::size(g_uiFrag))};
+inline constexpr std::uint32_t g_uiVertSize{static_cast<std::uint32_t>(std::size(g_uiVert))};
 

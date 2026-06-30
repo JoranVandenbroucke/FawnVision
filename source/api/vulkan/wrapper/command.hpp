@@ -25,8 +25,7 @@ struct CommandPool
 
 struct CommandBuffer
 {
-    std::vector<vk::CommandBuffer> commandBuffer{nullptr};
-    std::uint32_t count{0};
+    std::vector<vk::CommandBuffer> commandBuffer{};
 };
 
 struct RenderParams
@@ -87,7 +86,6 @@ struct StageAccess
     };
 
     commandBuffer.commandBuffer = device.device.allocateCommandBuffers(allocInfo, dispatch.dispatch);
-    commandBuffer.count         = count;
 
     return vk_status::ok;
 }
@@ -103,13 +101,12 @@ inline void Cleanup(const Dispatch& dispatch, const Device& device, const Comman
 
 inline void Cleanup(const Dispatch& dispatch, const Device& device, const CommandPool& commandPool, CommandBuffer& commandBuffer) noexcept
 {
-    if (commandPool.commandPool == nullptr || commandBuffer.commandBuffer.empty() || commandBuffer.count == 0)
+    if (commandPool.commandPool == nullptr || commandBuffer.commandBuffer.empty())
     {
         return;
     }
     device.device.freeCommandBuffers(commandPool.commandPool, commandBuffer.commandBuffer, dispatch.dispatch);
     commandBuffer.commandBuffer.clear();
-    commandBuffer.count = 0U;
 }
 
 // ---------------------------------------------------------------------------
@@ -325,7 +322,7 @@ inline void SetStencilTestEnable(const Dispatch& dispatch, const CommandBuffer& 
 }
 
 inline void SetVertexInput(const Dispatch& dispatch, const CommandBuffer& commandBuffer, const std::uint32_t vertexSize, const std::uint32_t instanceSize,
-                           const std::span<VertexAttributes> attributes) noexcept
+                           const std::span<const VertexAttributes> attributes) noexcept
 {
 
     std::array<vk::VertexInputBindingDescription2EXT, 2> bindings{};
@@ -372,15 +369,7 @@ inline void SetVertexInput(const Dispatch& dispatch, const CommandBuffer& comman
 
 inline void SetVertexInput(const Dispatch& dispatch, const CommandBuffer& commandBuffer) noexcept
 {
-    static constexpr vk::VertexInputBindingDescription2EXT emptyBinding{
-        .sType     = vk::StructureType::eVertexInputBindingDescription2EXT,
-        .pNext     = nullptr,
-        .binding   = 0U,
-        .stride    = 0U,
-        .inputRate = vk::VertexInputRate::eVertex,
-        .divisor   = 1U,
-    };
-    commandBuffer.commandBuffer.front().setVertexInputEXT({emptyBinding}, {}, dispatch.dispatch);
+    commandBuffer.commandBuffer.front().setVertexInputEXT({}, {}, dispatch.dispatch);
 }
 
 // ---------------------------------------------------------------------------

@@ -89,7 +89,6 @@ export struct Renderer
     }
 
     GFX_CHECK(Initialize(renderer.dispatch, renderer.device, renderer.surface, window.width, window.height, renderer.swapChain), "swapchain ({}x{})", window.width, window.height);
-    GFX_CHECK(Initialize(renderer.dispatch, renderer.device, renderer.surface, window.width, window.height, renderer.swapChain), "swapchain ({}x{})", window.width, window.height);
     GFX_CHECK(Initialize(renderer.dispatch, renderer.device, /*isTimeline=*/true, renderer.timelineSemaphore), "timeline semaphore");
     GFX_CHECK(Initialize(renderer.dispatch, renderer.device, /*isTimeline=*/false, renderer.binarySemaphore), "binary semaphore");
     GFX_CHECK(Initialize(renderer.dispatch, renderer.device, renderer.physical.graphicsQueueFamily, renderer.commandPool), "command pool (family={})",
@@ -143,6 +142,8 @@ export [[nodiscard]] inline auto RecreateRenderer(const Window& window, Renderer
     WaitIdle(renderer.dispatch, renderer.queue[g_presentQueueId]);
 
     CleanupComponents(renderer);
+    GetSurfaceCapabilities(renderer.dispatch, renderer.physical, renderer.surface);
+    GFX_CHECK(Recreate(renderer.dispatch, renderer.device, renderer.surface, renderer.swapChain, window.width, window.height), "recreating swap chain");
 
     return InitializeComponents(window, renderer);
 }
